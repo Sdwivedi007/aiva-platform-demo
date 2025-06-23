@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIVA - Blade Inspection Tool</title>
+    <link rel="icon" href="assets/images/aerodyne-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/openseadragon@3.1.0/build/openseadragon/openseadragon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        /* --- THEME & GLOBAL STYLES (same as dashboard) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        :root {
+            --glow-cyan: #00e5ff; --dark-navy: #01040a; --panel-bg: rgba(10, 25, 47, 0.75);
+            --panel-border: rgba(0, 229, 255, 0.25); --text-primary: #e6f1ff;
+            --text-secondary: #a8b2d1; --highlight-bg: rgba(0, 229, 255, 0.15);
+            --danger-glow: #ff4d4d; --warning-glow: #f0ad4e; --info-glow: #5bc0de;
+        }
+        body { background-color: var(--dark-navy); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+
+        /* --- LAYOUT --- */
+        .app-container { display: flex; width: 100%; height: 100%; }
+        .sidebar { width: 350px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; padding: 1rem; background: var(--dark-navy); }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; padding: 1rem; gap: 1rem; }
+        .right-panel { width: 380px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1rem; padding: 1rem; background: var(--dark-navy); }
+        
+        /* --- GENERIC CARD & TITLE --- */
+        .dashboard-card { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 15px; backdrop-filter: blur(15px); padding: 1.2rem; }
+        .card-title { font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 2px; font-size: 1rem; margin: 0 0 1rem 0; color: var(--text-secondary); border-bottom: 1px solid var(--panel-border); padding-bottom: 0.8rem; }
+        
+        /* --- LEFT SIDEBAR --- */
+        .back-button { display: flex; align-items: center; gap: 10px; padding: 0.8rem 1rem; border: 1px solid var(--panel-border); color: var(--text-secondary); border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 1rem; transition: all 0.2s ease; }
+        .back-button:hover { background-color: var(--glow-cyan); color: var(--dark-navy); }
+        .sidebar-divider { height: 1px; background-color: var(--panel-border); border: none; margin: 0 0 1rem 0; }
+        .project-tree ul { list-style: none; padding-left: 1rem; }
+        .tree-item { padding: 0.6rem; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; user-select: none; }
+        .tree-item:hover { background-color: var(--highlight-bg); }
+        .tree-item.active { background-color: var(--glow-cyan); color: var(--dark-navy); font-weight: bold; }
+        .tree-item i { margin-right: 0.8rem; color: var(--glow-cyan); }
+        .upload-area { text-align: center; border: 2px dashed var(--panel-border); padding: 1.5rem; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .upload-area:hover { background: var(--highlight-bg); border-color: var(--glow-cyan); }
+        
+        /* --- VIEWER AREA --- */
+        .viewer-header { display: flex; justify-content: space-between; align-items: center; }
+        .viewer-title { font-size: 1.8rem; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 5px var(--glow-cyan); }
+        .action-button { background: var(--panel-bg); border: 1px solid var(--panel-border); color: var(--text-primary); padding: 0.6rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .action-button:hover { background-color: var(--glow-cyan); color: var(--dark-navy); }
+        #viewer-container { flex-grow: 1; position: relative; background: #000; border-radius: 10px; border: 1px solid var(--panel-border); }
+        #stitched-image-viewer, #digital-twin-viewer { width: 100%; height: 100%; }
+        #digital-twin-viewer { display: none; }
+        .view-switcher { position: absolute; top: 10px; right: 10px; z-index: 1000; display: flex; background: var(--panel-bg); border-radius: 8px; border: 1px solid var(--panel-border); }
+        .view-switcher button { background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1rem; cursor: pointer; }
+        .view-switcher button.active { background: var(--glow-cyan); color: var(--dark-navy); border-radius: 6px; }
+
+        /* --- RIGHT PANEL --- */
+        .detection-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 45vh; overflow-y: auto; }
+        .detection-item { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem; padding: 0.8rem; background: rgba(0,0,0,0.2); border-radius: 8px; border-left: 4px solid; cursor: pointer; transition: all 0.2s ease; }
+        .detection-item:hover { background: var(--highlight-bg); transform: translateX(5px); }
+        .detection-item.severity-critical { border-left-color: var(--danger-glow); }
+        .detection-item.severity-moderate { border-left-color: var(--warning-glow); }
+        .detection-item.severity-minor { border-left-color: var(--info-glow); }
+        .defect-type { font-weight: bold; }
+        .confidence { font-size: 0.8rem; color: var(--text-secondary); }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #5cb85c; }
+        #defect-details-chart { min-height: 180px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- LEFT SIDEBAR: Project & Image Management -->
+        <aside class="sidebar">
+            <a href="dashboard.html" title="Back to Mission Control" class="back-button"><i class="fas fa-arrow-left"></i> Dashboard</a>
+            <div class="sidebar-divider"></div>
+            <div class="dashboard-card" style="flex-shrink: 0;">
+                 <h2 class="card-title"><i class="fas fa-sitemap"></i> Project Hierarchy</h2>
+                 <div class="project-tree" id="project-tree">
+                    <!-- Project tree will be generated by JavaScript -->
+                 </div>
+            </div>
+            <div class="dashboard-card" style="flex-grow: 1;">
+                <h2 class="card-title"><i class="fas fa-images"></i> Blade Images</h2>
+                <div class="upload-area" id="upload-area">
+                    <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                    <p>Drag & Drop or Click to Upload</p>
+                </div>
+                <input type="file" id="image-upload" multiple hidden>
+                <div id="image-list" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;"></div>
+                <button class="action-button" style="width: 100%; margin-top: 1rem;" id="stitch-button">
+                    <i class="fas fa-link"></i> Create Stitched Image
+                </button>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT: Viewer Area -->
+        <main class="main-content">
+            <div class="viewer-header">
+                <h1 class="viewer-title" id="viewer-title">No Turbine Selected</h1>
+            </div>
+            <div id="viewer-container">
+                <div id="stitched-image-viewer"></div>
+                <div id="digital-twin-viewer">3D Digital Twin View Placeholder</div>
+                <div class="view-switcher">
+                    <button id="show-2d" class="active">2D</button>
+                    <button id="show-3d">3D</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL: AI Detections & Details -->
+        <aside class="right-panel">
+            <div class="dashboard-card" style="flex-grow: 1;">
+                <h2 class="card-title"><i class="fas fa-robot"></i> AI Detections</h2>
+                <div class="detection-list" id="detection-list">
+                    <p style="text-align:center; color: var(--text-secondary);">Select a turbine to see defects.</p>
+                </div>
+            </div>
+            <div class="dashboard-card">
+                <h2 class="card-title"><i class="fas fa-chart-pie"></i> Defect Summary</h2>
+                <div id="defect-details-chart"></div>
+            </div>
+            <div class="dashboard-card">
+                <button style="width: 100%;" class="action-button"><i class="fas fa-file-pdf"></i> Generate & Export Report</button>
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+    'use strict';
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- MOCK DATA & API SIMULATION ---
+        const mockApi = {
+            getProjects: () => Promise.resolve([
+                { id: "site_alpha", name: "Site: Alpha-01", type: "site", children: [
+                    { id: "wtg_01", name: "WTG-01", type: "turbine", parent: "site_alpha", children: [
+                        { id: "blade_a", name: "Blade A", type: "blade", parent: "wtg_01" },
+                        { id: "blade_b", name: "Blade B", type: "blade", parent: "wtg_01" },
+                    ]},
+                    { id: "wtg_02", name: "WTG-02", type: "turbine", parent: "site_alpha" },
+                ]}
+            ]),
+            getStitchedImage: (bladeId) => Promise.resolve({
+                imageUrl: `https://i.imgur.com/8p2aW8k.jpeg`, // High-res placeholder stitched image
+            }),
+            getDetections: (turbineId) => Promise.resolve({
+                "wtg_01": [
+                    { id: 1, type: "Corrosion", confidence: 92, severity: "moderate", rect: { x: 0.1, y: 0.2, width: 0.05, height: 0.08 } },
+                    { id: 2, type: "Surface Crack", confidence: 85, severity: "critical", rect: { x: 0.4, y: 0.5, width: 0.15, height: 0.02 } },
+                    { id: 3, type: "Paint Peel", confidence: 95, severity: "minor", rect: { x: 0.7, y: 0.8, width: 0.1, height: 0.1 } },
+                ],
+                "wtg_02": [{ id: 4, type: "Lightning Strike", confidence: 98, severity: "critical", rect: { x: 0.2, y: 0.3, width: 0.03, height: 0.12 } }],
+            }[turbineId] || []),
+            runStitching: (files) => {
+                console.log("API CALL: stitchImages with", files.length, "files");
+                return new Promise(resolve => setTimeout(() => resolve({ success: true, imageUrl: 'https://i.imgur.com/8p2aW8k.jpeg' }), 2000));
+            }
+        };
+
+        // --- STATE MANAGEMENT ---
+        let activeElement = null;
+
+        // --- INITIALIZE VIEWERS ---
+        const viewer = OpenSeadragon({ id: "stitched-image-viewer", prefixUrl: "https://openseadragon.github.io/openseadragon/images/", showNavigator: true, gestureSettingsMouse: { clickToZoom: false } });
+        // In a real app, you would initialize CesiumJS here for the digital twin
+        
+        // --- DOM ELEMENTS ---
+        const projectTreeContainer = document.getElementById('project-tree');
+        const detectionList = document.getElementById('detection-list');
+        const viewerTitle = document.getElementById('viewer-title');
+        const uploadArea = document.getElementById('upload-area');
+        const imageUploadInput = document.getElementById('image-upload');
+        const imageList = document.getElementById('image-list');
+        const stitchButton = document.getElementById('stitch-button');
+        let uploadedFiles = [];
+
+        // --- CORE FUNCTIONS ---
+
+        // Function to render the project hierarchy
+        function renderProjectTree(items, container) {
+            const ul = document.createElement('ul');
+            items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'tree-item';
+                li.dataset.id = item.id;
+                li.dataset.type = item.type;
+                
+                let iconClass = 'fa-folder';
+                if(item.type === 'turbine') iconClass = 'fa-wind';
+                if(item.type === 'blade') iconClass = 'fa-a';
+                li.innerHTML = `<i class="fas ${iconClass}"></i> ${item.name}`;
+
+                li.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handleTreeItemClick(item, li);
+                });
+
+                if (item.children && item.children.length > 0) {
+                    li.appendChild(renderProjectTree(item.children));
+                }
+                ul.appendChild(li);
+            });
+            return ul;
+        }
+
+        // Handle clicking on a project tree item
+        async function handleTreeItemClick(item, element) {
+            if (activeElement) activeElement.classList.remove('active');
+            activeElement = element;
+            activeElement.classList.add('active');
+
+            viewerTitle.textContent = item.name;
+
+            if (item.type === 'turbine' || item.type === 'blade') {
+                const turbineId = item.type === 'blade' ? item.parent : item.id;
+                
+                // Simulate API calls
+                const imageData = await mockApi.getStitchedImage(item.id);
+                const detections = await mockApi.getDetections(turbineId);
+
+                viewer.open(imageData.imageUrl);
+                populateDetections(detections);
+                updateDefectChart(detections);
+            }
+        }
+        
+        // Populate the AI Detections panel
+        function populateDetections(detections) {
+            detectionList.innerHTML = '';
+            viewer.clearOverlays();
+
+            if (!detections || detections.length === 0) {
+                detectionList.innerHTML = `<p style="text-align:center; color: var(--text-secondary);">No defects detected.</p>`;
+                return;
+            }
+
+            detections.forEach(defect => {
+                const item = document.createElement('div');
+                item.className = `detection-item severity-${defect.severity}`;
+                item.innerHTML = `
+                    <div class="status-dot"></div>
+                    <div><div class="defect-type">${defect.type}</div><div class="confidence">Confidence: ${defect.confidence}%</div></div>
+                    <i class="fas fa-chevron-right"></i>
+                `;
+                detectionList.appendChild(item);
+
+                const overlayEl = document.createElement('div');
+                overlayEl.style.border = `2px solid var(--${defect.severity}-glow, var(--glow-cyan))`;
+                viewer.addOverlay(overlayEl, new OpenSeadragon.Rect(defect.rect.x, defect.rect.y, defect.rect.width, defect.rect.height));
+                
+                item.addEventListener('click', () => {
+                    viewer.viewport.fitBounds(new OpenSeadragon.Rect(defect.rect.x, defect.rect.y, defect.rect.width, defect.rect.height), true);
+                });
+            });
+        }
+
+        // Update the defect summary chart
+        function updateDefectChart(detections) {
+            const counts = { Critical: 0, Moderate: 0, Minor: 0 };
+            detections.forEach(d => {
+                if (d.severity === 'critical') counts.Critical++;
+                if (d.severity === 'moderate') counts.Moderate++;
+                if (d.severity === 'minor') counts.Minor++;
+            });
+
+            const options = {
+                chart: { type: 'donut', foreColor: 'var(--text-secondary)' },
+                series: Object.values(counts),
+                labels: Object.keys(counts),
+                colors: ['var(--danger-glow)', 'var(--warning-glow)', 'var(--info-glow)'],
+                legend: { position: 'bottom' },
+                plotOptions: { pie: { donut: { labels: { show: true, total: { show: true, label: 'Total Defects' } } } } }
+            };
+            const chart = new ApexCharts(document.querySelector("#defect-details-chart"), options);
+            chart.render();
+        }
+
+        // --- EVENT LISTENERS ---
+        uploadArea.addEventListener('click', () => imageUploadInput.click());
+        imageUploadInput.addEventListener('change', (e) => {
+            imageList.innerHTML = '';
+            uploadedFiles = Array.from(e.target.files);
+            uploadedFiles.forEach(file => {
+                imageList.innerHTML += `<p style="font-size: 0.8rem; margin: 2px 0;">${file.name}</p>`;
+            });
+        });
+
+        stitchButton.addEventListener('click', async () => {
+            if (uploadedFiles.length < 2) {
+                alert("Please upload at least 2 images to stitch.");
+                return;
+            }
+            stitchButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Stitching...';
+            const result = await mockApi.runStitching(uploadedFiles);
+            if(result.success) {
+                viewer.open(result.imageUrl);
+                alert("Stitching successful!");
+            }
+            stitchButton.innerHTML = '<i class="fas fa-link"></i> Create Stitched Image';
+        });
+
+        // --- INITIALIZATION ---
+        mockApi.getProjects().then(projectData => {
+            const tree = renderProjectTree(projectData);
+            projectTreeContainer.appendChild(tree);
+        });
+        
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* Layout Components */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #2c3e50;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 1000;
+}
+
+/* Base container styles */
+#map, #potree_render_area {
+  width: 100%;
+  height: calc(100vh - 60px); /* Adjust for header height */
+  position: relative;
+  overflow: hidden;
+  display: none;
+  background: black;
+}
+
+
+/* Button styles */
+.view-toggle, .upload-button {
+    position: fixed;
+    z-index: 1000;
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.view-toggle {
+    top: 10px;
+    left: 10px;
+}
+
+.upload-button {
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Hover effects */
+.view-toggle:hover,
+.upload-button:hover {
+    background-color: #45a049;
+}
+
+/* Toolbar Styles */
+.toolbar {
+    position: fixed;
+    top: 70px;
+    right: 10px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.tool-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.tool-button i {
+    font-size: 20px;
+    color: #2c3e50;
+}
+
+.tool-button:hover {
+    background: #f0f0f0;
+}
+
+.tool-button.active {
+    background: #3498db;
+}
+
+.tool-button.active i {
+    color: white;
+}
+
+/* Add tooltips */
+.tool-button::after {
+    content: attr(title);
+    position: absolute;
+    right: 100%;
+    margin-right: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.tool-button:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Remove any .volumetric-button styles that might conflict */
+.volumetric-button {
+    display: none;
+}

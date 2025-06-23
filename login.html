@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize System - AiVA GIS Platform</title>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Import a clean, futuristic font */
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
+
+        :root {
+            --glow-cyan: #00f6ff;
+            --dark-navy: #030814;
+            --medium-navy: #0a192f;
+            --light-navy-text: #8892b0;
+            --highlight-text: #e6f1ff;
+            --border-glow: rgba(0, 246, 255, 0.5);
+            --error-red: #ff3b3b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Rajdhani', sans-serif;
+            color: var(--highlight-text);
+            /* The background color is set by the Vanta.js animation */
+            overflow: hidden;
+        }
+
+        /* --- Vanta.js Animated Background Container --- */
+        #vanta-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+        
+        /* --- Glassmorphism Login Container --- */
+        .login-container {
+            position: relative;
+            background: linear-gradient(145deg, rgba(10, 25, 47, 0.6), rgba(17, 34, 64, 0.4));
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--border-glow);
+            padding: 2.5rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 246, 255, 0.15);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            animation: floatIn 1s ease-out forwards;
+        }
+        
+        @keyframes floatIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* All other styles (logo, h1, inputs, buttons) remain the same */
+        .login-header { display: flex; flex-direction: column; align-items: center; margin-bottom: 2rem; }
+        .logo { width: 65px; height: 65px; filter: drop-shadow(0 0 20px var(--glow-cyan)); margin-bottom: 1rem; }
+        h1 { font-size: 1.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 12px var(--glow-cyan); margin: 0; }
+        .input-group { position: relative; margin-bottom: 1.5rem; }
+        .input-group i { position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--light-navy-text); transition: all 0.3s ease; }
+        input { width: 100%; padding: 1rem 1rem 1rem 3.5rem; background-color: transparent; border: 1px solid var(--border-glow); border-radius: 10px; font-size: 1rem; color: var(--highlight-text); font-family: 'Rajdhani', sans-serif; transition: all 0.3s ease; box-sizing: border-box; }
+        input:focus { outline: none; background-color: rgba(0, 246, 255, 0.05); box-shadow: 0 0 20px rgba(0, 246, 255, 0.3); border-color: var(--glow-cyan); }
+        input:focus + i { color: var(--glow-cyan); }
+        input::placeholder { color: var(--light-navy-text); }
+        button { width: 100%; padding: 1rem; background-color: var(--glow-cyan); color: var(--dark-navy); border: none; border-radius: 10px; font-size: 1.2rem; font-family: 'Rajdhani', sans-serif; font-weight: 700; text-transform: uppercase; cursor: pointer; margin-top: 1rem; transition: all 0.3s ease; letter-spacing: 2px; box-shadow: 0 0 15px rgba(0, 246, 255, 0.4); }
+        button:hover { box-shadow: 0 0 25px var(--glow-cyan); transform: translateY(-3px) scale(1.02); }
+        .error-message { color: var(--error-red); text-shadow: 0 0 8px var(--error-red); margin-top: 1rem; height: 20px; opacity: 0; transition: opacity 0.3s ease; font-weight: 700; }
+        .error-message.show { opacity: 1; }
+
+    </style>
+</head>
+<body>
+    
+    <!-- This div is the target for our Vanta.js animation -->
+    <div id="vanta-bg"></div>
+    
+    <div class="login-container">
+        <div class="login-header">
+            <img src="assets/images/aerodyne-logo.png" alt="Logo" class="logo">
+            <h1>AiVA System Access</h1>
+        </div>
+        <form id="loginForm" onsubmit="validateLogin(event)">
+            <div class="input-group">
+                <input type="text" id="username" name="username" placeholder="Operator ID" required>
+                <i class="fas fa-user-astronaut"></i>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" name="password" placeholder="Access Key" required>
+                <i class="fas fa-key"></i>
+            </div>
+            <button type="submit">Initiate Connection</button>
+            <div id="errorMessage" class="error-message">
+                Access Denied: Invalid Credentials
+            </div>
+        </form>
+    </div>
+
+    <!-- Vanta.js Libraries (Required for the animation) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.globe.min.js"></script>
+
+    <script>
+        // --- Initialize Vanta.js Animated Background ---
+        VANTA.GLOBE({
+            el: "#vanta-bg",
+            mouseControls: true,
+            touchControls: true,
+            gyroControls: false,
+            minHeight: 200.00,
+            minWidth: 200.00,
+            scale: 1.00,
+            scaleMobile: 1.00,
+            color: 0x00f6ff,      // The color of the globe lines (our --glow-cyan)
+            backgroundColor: 0x30814, // The background color (our --dark-navy)
+            size: 1.20 // Size of the globe
+        });
+
+        /**
+         * Validates login credentials when the form is submitted.
+         */
+        function validateLogin(event) {
+            event.preventDefault(); // Prevent form from refreshing
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+
+            if (username === 'admin' && password === 'admin') {
+                // SUCCESS
+                localStorage.setItem('isAuthenticated', 'true');
+                document.querySelector('.login-container').style.animation = 'floatOut 0.5s ease-in forwards';
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 500);
+            } else {
+                // FAILURE
+                errorMessage.classList.add('show');
+                setTimeout(() => {
+                    errorMessage.classList.remove('show');
+                }, 3000);
+            }
+            return false;
+        }
+
+        // --- Redirect if already logged in ---
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('isAuthenticated') === 'true') {
+                window.location.href = 'dashboard.html';
+            }
+        });
+        
+        // Add CSS keyframe animation for the success state
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes floatOut {
+            to {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+        }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

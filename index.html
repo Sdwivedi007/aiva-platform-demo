@@ -1,0 +1,260 @@
+<!-- In your <body>, find the header a few lines down -->
+<header class="header">
+    <div class="header-left">
+        <img src="assets/images/aerodyne-logo.png" alt="Logo" class="logo">
+        <h1 class="header-title">AIVA <small>Aerodyne Intelligent Visualization & Analytics</small></h1>
+    </div>
+    <!-- In your <head> section -->
+<link rel="icon" href="assets/images/aerodyne-logo.png">
+
+<!-- ADD THIS LINE to cover all cases -->
+<link rel="shortcut icon" href="assets/images/aerodyne-logo.png" type="image/png">
+    <!-- START: ADD THE SPAN BACK HERE -->
+    <div class="header-right">
+        <span id="inspection-date">Select a Project</span>
+    </div>
+    <!-- END: ADD THE SPAN BACK HERE -->
+</header>
+    <!-- CSS Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/layout.min.css" rel="stylesheet">
+
+    
+    <!-- JS Libraries (MUST be in <head> and in correct order) -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script> 
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/plotty@0.4.5/dist/plotty.min.js"></script> 
+    <script src="/js/leaflet-geotiff.min.js"></script>t>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/index.min.js"></script>
+    
+    <style>
+        :root {
+            --glow-blue: #00aaff; --dark-blue-bg: #0d1a2b; --medium-blue-bg: #112240;
+            --light-blue-text: #a8b2d1; --highlight-text: #e6f1ff;
+            --border-color: rgba(0, 170, 255, 0.4); --error-red: #ff4d4d;
+        }
+        body { margin: 0; font-family: 'Segoe UI', 'Orbitron', sans-serif; background-color: var(--dark-blue-bg); color: var(--light-blue-text); overflow: hidden; }
+        #map { position: absolute; inset: 0; z-index: 1; background-color: #eaf2fa; }
+        .leaflet-tile-pane { filter: grayscale(0.5) brightness(0.95) contrast(1.1) hue-rotate(-10deg) saturate(1.2); }
+        .header { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 60px; background: rgba(17, 34, 64, 0.8); backdrop-filter: blur(10px); display: flex; align-items: center; padding: 0 25px; border-bottom: 1px solid var(--border-color); }
+        .header-left { display: flex; align-items: center; gap: 20px; }
+        .logo { width: 40px; height: 40px; filter: drop-shadow(0 0 15px var(--glow-blue)); }
+        .header-title { font-size: 24px; color: #fff; text-shadow: 0 0 10px var(--glow-blue); font-family: 'Orbitron', sans-serif; }
+        .header-title small { font-size: 14px; color: var(--light-blue-text); margin-left:10px; opacity: 0.8; font-family: 'Segoe UI', sans-serif;}
+        .header-right { margin-left: auto; color: var(--highlight-text); letter-spacing: 1px; }
+        .sidebar { position: fixed; top: 50%; transform: translateY(-50%); background: rgba(17, 34, 64, 0.85); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 0 25px rgba(0, 170, 255, 0.3); padding: 10px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; backdrop-filter: blur(10px); }
+        .sidebar-left { left: 20px; }
+        .sidebar-right { right: 20px; }
+        .tool-button { width: 44px; height: 44px; border: 1px solid transparent; background: transparent; color: var(--highlight-text); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;  }
+        .tool-button:hover, .tool-button.active { background: var(--glow-blue); color: var(--dark-blue-bg); box-shadow: 0 0 15px var(--glow-blue); border-color: var(--glow-blue); }
+        .top-right-controls { position: fixed; top: 12px; right: 15px; z-index: 1001; display: flex; gap: 10px; }
+        .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(2, 12, 26, 0.7); backdrop-filter: blur(3px); z-index: 1999; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; background: var(--medium-blue-bg); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 0 30px rgba(0, 170, 255, 0.3); z-index: 2000; }
+        .modal-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); text-align: center; font-family: 'Orbitron', 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 2px; }
+        .modal-content { padding: 10px; max-height: 400px; overflow-y: auto; }
+        .close-btn { position: absolute; top: 5px; right: 10px; background: none; border: none; font-size: 28px; color: #fff; cursor: pointer; }
+        .list-item { padding: 12px 15px; margin: 8px; border: 1px solid var(--border-color); border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+        .list-item:hover, .list-item.active { background-color: var(--glow-blue); color: var(--dark-blue-bg); font-weight: bold; }
+        .layer-item { display: flex; align-items: center; justify-content: space-between; }
+        .layer-toggle { -webkit-appearance: none; position: relative; width: 40px; height: 20px; background: var(--dark-blue-bg); border-radius: 10px; outline: none; cursor: pointer; transition: 0.2s; }
+        .layer-toggle:before { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: 0.2s; }
+        .layer-toggle:checked { background: var(--glow-blue); }
+        .layer-toggle:checked:before { transform: translateX(20px); }
+        #notification-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: none; }
+        .notification { padding: 12px 20px; background-color: var(--medium-blue-bg); color: var(--highlight-text); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transform: translateY(20px); transition: all 0.3s ease; }
+        .notification.show { opacity: 1; transform: translateY(0); }
+        .project-marker i { font-size: 24px; text-shadow: 0 0 10px currentColor, 0 0 15px rgba(0,0,0,0.8); }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background-color: var(--medium-blue-bg); color: var(--highlight-text); border: 1px solid var(--border-color); box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .leaflet-popup-close-button { color: var(--highlight-text) !important; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <input type="file" id="file-upload-input" accept=".geojson,.zip,.tif,.tiff" style="display: none;" multiple>
+    <div id="notification-container"></div>
+    
+    <header class="header">
+        <div class="header-left">
+            <img src="assets/images/aerodyne-logo.png" alt="Logo" class="logo">
+            <h1 class="header-title">AIVA <small>Aerodyne Intelligent Visualization & Analytics</small></h1>
+        </div>
+    </header>
+
+    <div class="sidebar sidebar-left">
+        <button id="btn-projects" class="tool-button" title="Projects"><i class="fas fa-briefcase"></i></button>
+        <button id="btn-layers" class="tool-button" title="Layers"><i class="fas fa-layer-group"></i></button>
+        <button id="btn-compare" class="tool-button" title="Compare Layers"><i class="fas fa-columns"></i></button>
+    </div>
+
+    <div class="sidebar sidebar-right">
+        <button id="btn-measure-distance" class="tool-button" title="Measure Distance"><i class="fas fa-ruler-horizontal"></i></button>
+        <button id="btn-measure-area" class="tool-button" title="Measure Area"><i class="fas fa-draw-polygon"></i></button>
+        <button id="btn-measure-volume" class="tool-button" title="Measure Volume"><i class="fas fa-cube"></i></button>
+        <button id="btn-clear-drawings" class="tool-button" title="Clear Drawings"><i class="fas fa-trash"></i></button>
+    </div>
+
+    <div class="top-right-controls">
+        <button id="btn-upload" class="tool-button" title="Upload Data"><i class="fas fa-cloud-upload-alt"></i></button>
+        <button id="btn-3d-view" class="tool-button" title="3D View"><i class="fas fa-cubes"></i></button>
+        <button id="btn-logout" class="tool-button" title="Logout"><i class="fas fa-power-off"></i></button>
+    </div>
+
+    <div id="modal-backdrop" class="modal-backdrop"></div>
+    <div id="projects-modal" class="modal"><div class="modal-header"><h3>PROJECTS</h3><button class="close-btn">×</button></div><div class="modal-content"></div></div>
+    <div id="layers-modal" class="modal"><div class="modal-header"><h3>DATA LAYERS</h3><button class="close-btn">×</button></div><div class="modal-content"></div></div>
+    
+    <script>
+    'use strict';
+    // This wrapper ensures ALL code runs only after the page is fully loaded.
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- 1. CONFIG & DATA ---
+        const iconMapping = {"Urban Mapping":{icon:"fa-solid fa-draw-polygon",color:"#00aaff"},"Urban infra Mapping":{icon:"fa-solid fa-building-columns",color:"#00aaff"},"Infra Road":{icon:"fa-solid fa-road",color:"#00aaff"},"Infra Railway":{icon:"fa-solid fa-train-tram",color:"#00aaff"},"Infra ropeway":{icon:"fa-solid fa-cable-car",color:"#00aaff"},"Wind turbine":{icon:"fa-solid fa-fan",color:"#f0ad4e"},"Transmission":{icon:"fa-solid fa-tower-broadcast",color:"#f0ad4e"},"Solar":{icon:"fa-solid fa-solar-panel",color:"#f0ad4e"},"Mining":{icon:"fa-solid fa-truck-monster",color:"#d9534f"},"UG Mining":{icon:"fa-solid fa-helmet-safety",color:"#d9534f"},"Irrigation":{icon:"fa-solid fa-faucet-drip",color:"#5cb85c"},"Telicom":{icon:"fa-solid fa-satellite-dish",color:"#5bc0de"},"Heritage":{icon:"fa-solid fa-landmark-dome",color:"#A52A2A"},"default":{icon:"fa-solid fa-location-dot",color:"#777"}};
+        const projects = [{id:'master_project',name:'All India Projects',center:[22.59,78.96],zoom:5,symbols:[{type:'Wind turbine',latlng:[22.973423,78.656895],info:'Wind Turbine Inspection - Madhya Pradesh'},{type:'Irrigation',latlng:[25.4545,79.8872],info:'Irrigation Survey - Mahoba, UP'},{type:'Telicom',latlng:[26.9124,75.8177],info:'Telicom - Jaipur'},{type:'Mining',latlng:[29.3949,75.5887],info:'Mining Survey - District Bhiwani, Haryana.'},{type:'Heritage',latlng:[26.9124,75.8177],info:'Heritage Mapping - Jaipur,Kuchaman Fort'},{type:'UG Mining',latlng:[24.5697,73.6979],info:'UG Mining - Udaipur'},{type:'Urban Mapping',latlng:[19.8748,74.2991],info:'Urban Mapping - Rahuri'},{type:'Urban infra Mapping',latlng:[19.8748,74.2991],info:'Urban infra Mapping - Parner'},{type:'Infra Road',latlng:[20.9517,85.0972],info:'Infra road - ODISHA'}]}];
+        const dataLayers = {};
+
+        // --- 2. MAP & STATE INITIALIZATION ---
+        let activeDrawer, currentProject, sideBySideControl;
+        const mainMap = L.map('map', { zoomControl: false }).setView([22.59, 78.96], 5);
+        const drawnItems = L.featureGroup().addTo(mainMap);
+        const projectSymbolsLayer = L.featureGroup().addTo(mainMap);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(mainMap);
+        L.control.scale({ position: 'bottomright', imperial: false }).addTo(mainMap);
+
+        // --- 3. DOM ELEMENT SELECTORS ---
+        const fileInput = document.getElementById('file-upload-input');
+        const projectListContainer = document.getElementById('projects-modal').querySelector('.modal-content');
+        const layerListContainer = document.getElementById('layers-modal').querySelector('.modal-content');
+        const inspectionDateEl = document.getElementById('inspection-date');
+        
+        // --- 4. CORE FUNCTIONS ---
+        const showNotification = (message, duration = 4000) => {
+            const container = document.getElementById('notification-container');
+            const note = document.createElement('div');
+            note.className = 'notification'; note.textContent = message;
+            container.appendChild(note);
+            setTimeout(() => note.classList.add('show'), 10);
+            setTimeout(() => {
+                note.classList.remove('show');
+                note.addEventListener('transitionend', () => note.remove());
+            }, duration);
+        };
+        const closeAllModals = () => document.querySelectorAll('.modal, .modal-backdrop').forEach(el => el.style.display = 'none');
+        const toggleModal = (modalId) => {
+            const modal = document.getElementById(modalId);
+            const isVisible = modal.style.display === 'block';
+            closeAllModals();
+            if (!isVisible) { modal.style.display = 'block'; document.getElementById('modal-backdrop').style.display = 'block'; }
+        };
+        const stopDrawing = () => { if (activeDrawer) activeDrawer.disable(); };
+        
+        const updateProjectSymbols = () => {
+            projectSymbolsLayer.clearLayers();
+            if (currentProject && currentProject.symbols) {
+                currentProject.symbols.forEach(symbol => {
+                    const key = Object.keys(iconMapping).find(k => symbol.type.toLowerCase().includes(k.toLowerCase())) || "default";
+                    const config = iconMapping[key];
+                    const icon = L.divIcon({ className: 'project-marker', html: `<i class="${config.icon}" style="color: ${config.color};"></i>`});
+                    L.marker(symbol.latlng, { icon: icon }).bindPopup(symbol.info).addTo(projectSymbolsLayer);
+                });
+            }
+        };
+        const selectProject = (projectId) => {
+            currentProject = projects.find(p => p.id === projectId);
+            if (currentProject) {
+                mainMap.flyTo(currentProject.center, currentProject.zoom);
+                updateProjectSymbols();
+                document.querySelectorAll('#projects-modal .list-item').forEach(item => item.classList.toggle('active', item.dataset.projectId === projectId));
+                inspectionDateEl.textContent = currentProject.name;
+                closeAllModals();
+            }
+        };
+        const updateDataLayerList = () => {
+             const layerNames = Object.keys(dataLayers);
+            layerListContainer.innerHTML = layerNames.length === 0 ? '<p style="text-align:center; color:#999;">No data layers uploaded.</p>' : '';
+            layerNames.forEach(name => {
+                const isVisible = mainMap.hasLayer(dataLayers[name]);
+                const item = document.createElement('div');
+                item.className = 'layer-item list-item';
+                item.innerHTML = `<label for="toggle-${name}">${name}</label><input type="checkbox" id="toggle-${name}" class="layer-toggle" onchange="toggleDataLayer('${name}', this)" ${isVisible ? 'checked' : ''}>`;
+                layerListContainer.appendChild(item);
+            });
+        };
+        const toggleDataLayer = (layerName, checkbox) => { if (dataLayers[layerName]) { checkbox.checked ? dataLayers[layerName].addTo(mainMap) : mainMap.removeLayer(dataLayers[layerName]); }};
+        const calculateVolume = (layerId, area) => {
+            const depthInput = document.getElementById(`depth-input-${layerId}`);
+            const depth = depthInput ? depthInput.value : null;
+            const resultDiv = document.getElementById(`vol-result-${layerId}`);
+            if (depth && !isNaN(depth) && resultDiv) { const volume = area * parseFloat(depth); resultDiv.innerHTML = `<b>Volume:</b> ${volume.toLocaleString(undefined, {maximumFractionDigits:0})} m³`; }
+            else if (resultDiv) { resultDiv.innerHTML = `<span style="color:red;">Invalid height</span>`; }
+        };
+
+        // --- 5. EVENT LISTENERS ---
+        document.getElementById('btn-projects').addEventListener('click', () => toggleModal('projects-modal'));
+        document.getElementById('btn-layers').addEventListener('click', () => toggleModal('layers-modal'));
+        document.getElementById('btn-upload').addEventListener('click', () => fileInput.click());
+        document.getElementById('btn-logout').addEventListener('click', () => { if(confirm("Are you sure?")) { window.location.href = 'login.html'; } });
+        document.getElementById('btn-3d-view').addEventListener('click', () => window.open('/Potree_1.8.2/examples/viewer.html', '_blank'));
+        document.getElementById('btn-clear-drawings').addEventListener('click', () => drawnItems.clearLayers());
+        document.querySelectorAll('.modal-header .close-btn, #modal-backdrop').forEach(el => el.addEventListener('click', closeAllModals));
+        
+        document.getElementById('btn-measure-distance').addEventListener('click', () => { stopDrawing(); activeDrawer = new L.Draw.Polyline(mainMap, { shapeOptions: { color: 'var(--glow-blue)' }}); activeDrawer.enable(); });
+        document.getElementById('btn-measure-area').addEventListener('click', () => { stopDrawing(); activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: 'var(--glow-blue)' }}); activeDrawer.enable(); });
+        document.getElementById('btn-measure-volume').addEventListener('click', () => { stopDrawing(); activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: '#f0ad4e' }, showArea: true }); activeDrawer.type = 'volume'; activeDrawer.enable(); });
+
+        fileInput.addEventListener('change', async (event) => {
+            for (const file of event.target.files) {
+                const layerName = file.name;
+                showNotification(`Processing ${layerName}...`);
+                try {
+                let newLayer;
+                const fileExtension = file.name.split('.').pop().toLowerCase();
+
+                if (fileExtension === 'zip') {
+                    const buffer = await file.arrayBuffer(); const geojson = await shp(buffer);
+                    newLayer = L.geoJSON(geojson, { style: { color: '#ff7800' } });
+                } else if (fileExtension === 'tif' || fileExtension === 'tiff') {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const blob = new Blob([arrayBuffer]);
+                    const fileUrl = URL.createObjectURL(blob);
+                    // Replace the old line with this one
+newLayer = L.leafletGeotiff(fileUrl);
+                } else { throw new Error('Unsupported file type'); }
+                
+                dataLayers[layerName] = newLayer;
+                newLayer.addTo(mainMap);
+                newLayer.on('load', () => { if (newLayer.getBounds && newLayer.getBounds().isValid()) mainMap.fitBounds(newLayer.getBounds()); });
+                showNotification(`Layer "${layerName}" loaded.`);
+                } catch (error) { showNotification(`Error loading file: ${error.message}`, 5000); }
+            }
+            updateDataLayerList();
+            fileInput.value = '';
+        });
+
+        mainMap.on('draw:created', (event) => {
+            const layer = event.layer; drawnItems.addLayer(layer);
+            if (event.layerType === 'polygon' && event.target.type === 'volume') {
+                const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                layer.bindPopup(`<div style="font-size:14px;min-width:180px;"><b>Surface Area:</b> ${area.toFixed(2).toLocaleString()} m²<br><div style="margin-top:8px;"><input type="number" id="depth-input-${layer._leaflet_id}" placeholder="Height/Depth (m)" style="width:100px;padding:4px;"><button onclick="window.calculateVolume(${layer._leaflet_id}, ${area})" style="margin-left:5px;">Calc</button></div><div id="vol-result-${layer._leaflet_id}" style="margin-top:8px;font-weight:bold;"></div></div>`).openPopup();
+            } // ... add other draw handlers ...
+        });
+
+        // Make calculateVolume global for the popup
+        window.calculateVolume = calculateVolume;
+
+        // --- 6. INITIALIZE UI ---
+        projects.forEach(p => {
+            const item = document.createElement('div');
+            item.className = 'list-item'; item.textContent = p.name;
+            item.dataset.projectId = p.id; item.onclick = () => selectProject(p.id);
+            projectListContainer.appendChild(item);
+        });
+        updateDataLayerList();
+        if (projects.length > 0) selectProject(projects[0].id);
+    });
+    </script>
+</body>
+</html>

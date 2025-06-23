@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIVA - Mission Control</title>
+    <link rel="icon" href="assets/images/aerodyne-logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Library for creating beautiful, animated charts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        :root {
+            --glow-cyan: #00e5ff; --light-cyan: #79d8f0; --dark-navy: #01040a;
+            --panel-bg: rgba(10, 25, 47, 0.7); --panel-border: rgba(0, 229, 255, 0.2);
+            --text-primary: #e6f1ff; --text-secondary: #a8b2d1;
+        }
+
+        body {
+            background-color: var(--dark-navy); color: var(--text-primary);
+            font-family: 'Segoe UI', 'Orbitron', sans-serif;
+            margin: 0; padding: 1.5rem; min-height: 100vh; box-sizing: border-box;
+        }
+
+        .main-container {
+            display: grid; grid-template-columns: 280px 1fr;
+            grid-template-rows: auto 1fr; gap: 1.5rem;
+            width: 100%; max-width: 1600px; margin: auto;
+            height: calc(100vh - 3rem);
+        }
+
+        .dashboard-card {
+            background: var(--panel-bg); border: 1px solid var(--panel-border);
+            border-radius: 15px; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            padding: 1.5rem; box-shadow: 0 0 30px rgba(0, 229, 255, 0.1);
+        }
+
+        .header {
+            grid-column: 1 / -1; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .header-title-group { display: flex; align-items: center; gap: 15px; }
+        .logo { width: 45px; height: 45px; filter: drop-shadow(0 0 12px var(--glow-cyan)); }
+        .header-title {
+            font-family: 'Orbitron', sans-serif; font-size: 1.8rem;
+            margin: 0; text-shadow: 0 0 10px var(--glow-cyan);
+        }
+        .header-actions button {
+            background: none; border: 1px solid var(--panel-border); color: var(--text-secondary);
+            padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer;
+            transition: all 0.2s ease; font-family: 'Orbitron', sans-serif;
+        }
+        .header-actions button:hover {
+            background-color: var(--glow-cyan); color: var(--dark-navy);
+            box-shadow: 0 0 15px var(--glow-cyan); transform: translateY(-2px);
+        }
+
+        .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+        .sector-card { display: flex; flex-direction: column; gap: 0.8rem; }
+        .card-title {
+            font-family: 'Orbitron', sans-serif; text-transform: uppercase;
+            letter-spacing: 2px; font-size: 1rem; margin: 0 0 .5rem 0;
+            color: var(--text-secondary); border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 0.8rem;
+        }
+        .sector-button {
+            display: flex; align-items: center; gap: 15px; width: 100%;
+            text-align: left; background: none; border: 1px solid transparent;
+            border-radius: 8px; padding: 1rem; color: var(--text-secondary);
+            cursor: pointer; font-size: 1rem; transition: all 0.2s ease;
+        }
+        .sector-button:hover, .sector-button.active {
+            background: rgba(0, 229, 255, 0.1); border-color: var(--panel-border);
+            color: var(--text-primary);
+        }
+        .sector-button i {
+            width: 25px; font-size: 1.2rem; color: var(--glow-cyan);
+            text-shadow: 0 0 8px var(--glow-cyan);
+        }
+
+        .main-content { display: grid; grid-template-rows: auto 1fr; gap: 1.5rem; overflow-y: auto; }
+        
+        /* --- Styles for the New Chart Grid --- */
+        .chart-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; padding: 1rem;
+        }
+        .chart-container {
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .chart-label {
+            position: absolute; text-align: center; color: var(--text-secondary);
+            pointer-events: none; /* Allows clicks to go through to the chart */
+        }
+        .chart-label i { font-size: 2rem; color: var(--glow-cyan); text-shadow: 0 0 10px var(--glow-cyan); }
+        .chart-label span { display: block; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+        .apexcharts-radialbar-track { stroke: rgba(0, 229, 255, 0.1); }
+        .apexcharts-text { font-family: 'Orbitron', sans-serif !important; text-shadow: 0 0 5px var(--glow-cyan); }
+        .apexcharts-datalabel-value { fill: var(--text-primary) !important; font-size: 26px !important; font-weight: bold; }
+
+        /* Project Grid */
+        .projects-container { overflow-y: auto; }
+        .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+        .project-card {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            gap: 0.8rem; background: rgba(0,0,0,0.25); padding: 1.5rem 1rem;
+            border-radius: 10px; cursor: pointer; text-decoration: none;
+            color: var(--text-secondary); transition: all 0.3s ease; text-align: center;
+        }
+        .project-card.visible { display: flex; }
+        .project-card:hover { transform: translateY(-5px); background: var(--panel-bg); box-shadow: 0 0 25px rgba(0, 229, 255, 0.3); color: var(--text-primary); }
+        .project-card i { font-size: 3rem; color: var(--glow-cyan); text-shadow: 0 0 12px var(--glow-cyan); }
+        .project-card span { font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+
+        <header class="header">
+            <div class="header-title-group">
+                <img src="assets/images/aerodyne-logo.png" alt="Logo" class="logo">
+                <h1 class="header-title">AIVA Mission Control</h1>
+            </div>
+            <div class="header-actions">
+                <button id="logout-btn"><i class="fas fa-power-off"></i> Logout</button>
+            </div>
+        </header>
+
+        <aside class="sidebar">
+            <div class="dashboard-card sector-card">
+                <h2 class="card-title">Sectors</h2>
+                <button class="sector-button active" data-sector="all"><i class="fas fa-globe"></i> <span>All Projects</span></button>
+                <button class="sector-button" data-sector="energy"><i class="fas fa-bolt"></i> <span>Energy</span></button>
+                <button class="sector-button" data-sector="mining"><i class="fas fa-gem"></i> <span>Mining</span></button>
+                <button class="sector-button" data-sector="infra"><i class="fas fa-traffic-light"></i> <span>Infrastructure</span></button>
+                <button class="sector-button" data-sector="maritime"><i class="fas fa-anchor"></i> <span>Maritime & Ports</span></button>
+            </div>
+            <div class="dashboard-card" style="margin-top: auto;">
+                 <h2 class="card-title">Quick Actions</h2>
+                 <div class="projects-grid">
+                     <a href="#" class="project-card visible" style="flex-direction:row; padding: 0.8rem;"><i class="fas fa-plus" style="font-size: 1.2rem;"></i> <span style="font-size: 0.8rem">New Project</span></a>
+                     <a href="#" class="project-card visible" style="flex-direction:row; padding: 0.8rem;"><i class="fas fa-cog" style="font-size: 1.2rem;"></i> <span style="font-size: 0.8rem">Settings</span></a>
+                 </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- REPLACED METRICS GRID WITH CHART GRID -->
+            <div class="dashboard-card chart-grid">
+                <div class="chart-container"><div id="energy-chart"></div><div class="chart-label"><i class="fas fa-bolt"></i><span>ENERGY</span></div></div>
+                <div class="chart-container"><div id="mining-chart"></div><div class="chart-label"><i class="fas fa-gem"></i><span>MINING</span></div></div>
+                <div class="chart-container"><div id="infra-chart"></div><div class="chart-label"><i class="fas fa-traffic-light"></i><span>INFRA</span></div></div>
+                <div class="chart-container"><div id="maritime-chart"></div><div class="chart-label"><i class="fas fa-anchor"></i><span>MARITIME</span></div></div>
+            </div>
+
+            <div class="dashboard-card projects-container">
+                <h2 class="card-title">Project Grid</h2>
+                <div class="projects-grid">
+                    <!-- Your full list of project cards goes here... -->
+                    <a href="inspection_tool.html" class="project-card visible" data-sector="energy"><i class="fas fa-search-plus"></i><span>Detailed Blade Inspection</span></a>
+                    <a href="index.html?project=solar_farm" class="project-card visible" data-sector="energy"><i class="fas fa-solar-panel"></i><span>Solar Farm Analysis</span></a>
+                    <a href="viewer.html?pointcloud=transmission" class="project-card visible" data-sector="energy"><i class="fas fa-tower-broadcast"></i><span>Transmission Lines (3D)</span></a>
+                    <a href="viewer.html?pointcloud=coal_mine" class="project-card visible" data-sector="mining"><i class="fas fa-dumpster-fire"></i><span>Coal Stockpile (3D)</span></a>
+                    <!-- ... etc. -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Wait for the DOM to be fully loaded before running scripts
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- AUTHENTICATION & LOGOUT ---
+            if (localStorage.getItem('isAuthenticated') !== 'true') {
+                window.location.href = 'login.html';
+            }
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                if (confirm("Are you sure you want to log out?")) {
+                    localStorage.removeItem('isAuthenticated');
+                    window.location.href = 'login.html';
+                }
+            });
+
+            // --- DASHBOARD SECTOR FILTERING ---
+            const sectorButtons = document.querySelectorAll('.sector-button');
+            const projectCards = document.querySelectorAll('.project-card');
+            sectorButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    sectorButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+                    const selectedSector = button.dataset.sector;
+                    projectCards.forEach(card => {
+                        card.classList.toggle('visible', selectedSector === 'all' || card.dataset.sector === selectedSector);
+                    });
+                });
+            });
+
+            // --- DYNAMIC CHART GENERATION ---
+            const projectData = {
+                energy: document.querySelectorAll('.project-card[data-sector="energy"]').length,
+                mining: document.querySelectorAll('.project-card[data-sector="mining"]').length,
+                infra: document.querySelectorAll('.project-card[data-sector="infra"]').length,
+                maritime: document.querySelectorAll('.project-card[data-sector="maritime"]').length
+            };
+            const totalProjects = Object.values(projectData).reduce((sum, count) => sum + count, 0);
+
+            const createProjectChart = (elementId, percentage, color) => {
+                const options = {
+                    chart: { type: 'radialBar', height: '100%', sparkline: { enabled: true } },
+                    series: [percentage],
+                    colors: [color],
+                    plotOptions: {
+                        radialBar: {
+                            hollow: { size: '75%' }, track: { margin: 0 },
+                            dataLabels: {
+                                name: { show: false },
+                                value: {
+                                    show: true, color: 'var(--text-primary)', offsetY: 10,
+                                    fontSize: '28px', fontWeight: 'bold', fontFamily: 'Orbitron, sans-serif',
+                                    formatter: val => `${val}%`
+                                }
+                            }
+                        }
+                    },
+                    stroke: { lineCap: 'round' }
+                };
+                new ApexCharts(document.querySelector(elementId), options).render();
+            };
+
+            if (totalProjects > 0) {
+                createProjectChart("#energy-chart", Math.round((projectData.energy / totalProjects) * 100), '#f0ad4e');
+                createProjectChart("#mining-chart", Math.round((projectData.mining / totalProjects) * 100), '#d9534f');
+                createProjectChart("#infra-chart", Math.round((projectData.infra / totalProjects) * 100), '#00aaff');
+                createProjectChart("#maritime-chart", Math.round((projectData.maritime / totalProjects) * 100), '#5bc0de');
+            }
+        });
+    </script>
+</body>
+</html>
