@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
     <html lang="en">
     <head>
             <meta charset="UTF-8" />
@@ -224,7 +224,7 @@
         <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
         <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
         <script src="/js/leaflet-geotiff.min.js"></script>
-        
+        <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
 
     <!-- geotiff.js (required for parsing) -->
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script> 
@@ -292,6 +292,7 @@
         let currentProject = null;
         let comparisonMap = null;
         let isComparing = false;
+        let sideBySideControl = null;
         
         // Data layers for uploaded GeoJSON
         const dataLayers = {}; // This will hold all uploaded layers by name
@@ -394,11 +395,17 @@
                 const geojson = await shp(buffer);
                 newLayer = L.geoJSON(geojson, { style: { color: '#ff7800', weight: 2 } });
 
-            } else if (fileExtension === 'geojson' || fileExtension === 'kml') { // Handles GeoJSON/KML
-                const fileText = await file.text();
-                const geojson = JSON.parse(fileText);
-                newLayer = L.geoJSON(geojson, { style: { color: '#5bc0de', weight: 2 } });
-
+            } else if (fileExtension === 'geojson') { // Handles GeoJSON only
+    const fileText = await file.text();
+    const geojson = JSON.parse(fileText);
+    newLayer = L.geoJSON(geojson, { style: { color: '#5bc0de', weight: 2 } });
+} else if (fileExtension === 'kml') {
+    const fileText = await file.text();
+    const blob = new Blob([fileText], { type: 'application/vnd.google-earth.kml+xml' });
+    const url = URL.createObjectURL(blob);
+    newLayer = omnivore.kml(url).on('ready', function() {
+        mainMap.fitBounds(newLayer.getBounds());
+    });
             } else if (fileExtension === 'tif' || fileExtension === 'tiff') { // Handles GeoTIFF
                 
                 // THIS IS THE CRITICAL FIX: We create a URL from the local file data
@@ -406,10 +413,13 @@
                 const fileUrl = URL.createObjectURL(blob);
 
                 // Now, we pass the generated URL to the library, which is what it expects.
-               newLayer = new L.LeafletGeotiff.Plotty(fileUrl, {
-               colorScale: 'viridis',
-               displayMin: 0,
-               displayMax: 255});
+               newLayer = L.leafletGeotiff(fileUrl, {
+  renderer: new L.LeafletGeotiff.Plotty({
+    colorScale: 'viridis',
+    displayMin: 0,
+    displayMax: 255
+  })
+});
 
             } else {
                 throw new Error('Unsupported file type');
