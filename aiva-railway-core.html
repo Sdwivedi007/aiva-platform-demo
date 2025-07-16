@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<title>AIVA Railway Core [v8.0 FINAL]</title>
+
+    <!-- STEP 1: All-in-one Potree CSS Bundle -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/potree/potree@1.8/build/potree/potree.css">
+    
+    <!-- FontAwesome Icons for our UI -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+	
+    <style>
+        :root {
+            --bg-color: #0d0f1a;
+            --primary-color: rgba(22, 28, 51, 0.7);
+            --accent-color: #00f6ff;
+            --accent-glow: rgba(0, 246, 255, 0.4);
+            --text-color: #e0e0e0;
+            --border-color: rgba(0, 246, 255, 0.2);
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background-color: var(--bg-color); }
+        
+        #potree_render_area {
+            position: absolute !important; top: 0; left: 0;
+            width: 100% !important; height: 100% !important;
+        }
+        #potree_sidebar_container, .potree_menu_toggle { display: none !important; }
+        
+        .aiva-ui-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex; flex-direction: column;
+            box-sizing: border-box;
+        }
+        .aiva-ui-overlay > * { pointer-events: auto; }
+        
+        header { padding: 15px 25px; background: linear-gradient(to bottom, rgba(13, 15, 26, 0.9), transparent); }
+        header h1 { 
+            font-family: 'Roboto Mono', monospace; margin: 0; font-size: 1.8em; 
+            color: var(--accent-color); text-shadow: 0 0 10px var(--accent-glow);
+        }
+        
+        .main-content { flex-grow: 1; display: flex; padding: 0 25px 25px 25px; gap: 20px; }
+        .sidebar { width: 360px; display: flex; flex-direction: column; gap: 20px; flex-shrink: 0; }
+        .panel { 
+            font-family: 'Roboto Mono', monospace; background: var(--primary-color); 
+            border: 1px solid var(--border-color); border-radius: 12px; backdrop-filter: blur(10px); 
+            box-shadow: 0 0 20px rgba(0, 246, 255, 0.1); padding: 20px;
+            display: flex; flex-direction: column;
+        }
+        .panel-header {
+             margin: -20px -20px 15px -20px; padding: 10px 20px;
+             border-bottom: 1px solid var(--border-color); color: var(--accent-color);
+             font-weight: bold; text-transform: uppercase;
+        }
+        
+        .primary-action-btn { 
+            width: 100%; padding: 12px; background: var(--accent-color);
+            color: var(--bg-color); border: none; border-radius: 5px; cursor: pointer;
+            font-weight: bold; font-family: inherit; font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .primary-action-btn:hover { box-shadow: 0 0 15px var(--accent-glow); }
+        .primary-action-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+        #log-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow:1; font-size: 0.9em; }
+    </style>
+</head>
+
+<body>
+    <!-- Potree background container -->
+	<div id="potree_render_area"></div>
+
+    <!-- AIVA UI overlay -->
+    <div class="aiva-ui-overlay">
+        <header><h1><i class="fa-solid fa-train-subway"></i> AIVA Railway Command Core</h1></header>
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="panel">
+                    <div class="panel-header">DATASETS</div>
+                    <button id="load-lidar-btn" class="primary-action-btn"><i class="fa-solid fa-cubes"></i> LOAD LIDAR DATA</button>
+                </div>
+                 <div class="panel" style="flex-grow:1;">
+                     <div class="panel-header">SYSTEM LOG</div>
+                     <ul id="log-list"></ul>
+                 </div>
+            </aside>
+        </div>
+    </div>
+
+	<!-- STEP 2: All-in-one Potree JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/gh/potree/potree@1.8/build/potree/potree.all.js"></script>
+	
+	<script>
+		document.addEventListener('DOMContentLoaded', () => {
+            
+            const app = {
+                viewer: null,
+                loadBtn: document.getElementById('load-lidar-btn'),
+                logList: document.getElementById('log-list'),
+
+                // =========================================================================
+                // === CRITICAL CONFIGURATION: SET YOUR DATA PATH HERE =====================
+                // =========================================================================
+                // This path must point to the `cloud.js` file generated by PotreeConverter.
+                // It is relative to the location of THIS html file.
+                // Example: If your data is in `public/potree_data/MyScan/cloud.js`,
+                // and this html file is in `public/`, the path should be:
+                // "potree_data/MyScan/cloud.js"
+                // =========================================================================
+                POTREE_DATA_PATH: "potree_data/YOUR_LIDAR_FOLDER_NAME/cloud.js",
+
+                log(message, type = 'info') {
+                    const li = document.createElement('li');
+                    li.style.cssText = `padding: 4px 0; border-bottom: 1px solid var(--border-color);`;
+                    const iconColor = type === 'error' ? '#ff4d6a' : 'var(--accent-color)';
+                    li.innerHTML = `<i class="fa-solid fa-info-circle" style="color:${iconColor}; margin-right:8px;"></i>${message}`;
+                    this.logList.prepend(li);
+                },
+
+                init() {
+                    this.log('Initializing AIVA Railway Core [v8.0]');
+                    
+                    try {
+                        // The viewer MUST be initialized with the DOM element
+                        this.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+                        
+                        this.viewer.setEDLEnabled(true);
+                        this.viewer.setFOV(60);
+                        this.viewer.setPointBudget(3_000_000);
+                        this.viewer.setBackground(null); // Use our CSS background
+                        this.viewer.loadSettingsFromURL();
+                        
+                        this.log('Potree 3D viewer initialized successfully.');
+                        this.log('Ready to load LiDAR data.');
+
+                        // Attach the event listener now that the viewer is guaranteed to exist.
+                        this.loadBtn.addEventListener('click', () => this.loadPointCloud());
+
+                    } catch(error) {
+                        console.error("Fatal Error: Potree viewer could not be initialized.", error);
+                        this.log("FATAL ERROR: Could not initialize 3D viewer.", "error");
+                        this.loadBtn.disabled = true;
+                        this.loadBtn.innerHTML = `<i class="fa-solid fa-xmark"></i> INIT FAILED`;
+                    }
+                },
+
+                loadPointCloud() {
+                    if (!this.viewer) {
+                        this.log("ERROR: Viewer not initialized. Cannot load.", "error");
+                        return;
+                    }
+
+                    this.loadBtn.disabled = true;
+                    this.loadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> LOADING...';
+                    this.log(`Attempting to load data from: ${this.POTREE_DATA_PATH}`);
+
+                    Potree.loadPointCloud(this.POTREE_DATA_PATH, "Railway Scan", e => {
+                        if (e.type === 'loading_done') {
+                            const pointcloud = e.pointcloud;
+                            this.viewer.scene.addPointCloud(pointcloud);
+                            
+                            const material = pointcloud.material;
+                            material.size = 1;
+                            material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+                            material.shape = Potree.PointShape.SQUARE;
+                            
+                            this.viewer.fitToScreen();
+                            this.log('LiDAR data loaded successfully!', 'success');
+                            this.loadBtn.innerHTML = '<i class="fa-solid fa-check"></i> DATA LOADED';
+
+                        } else if (e.type === 'loading_failed') {
+                            console.error("Potree loading failed:", e);
+                            this.log(`ERROR: Failed to load point cloud.`, "error");
+                            this.loadBtn.disabled = false;
+                            this.loadBtn.innerHTML = '<i class="fa-solid fa-cubes"></i> LOAD LIDAR DATA';
+                        }
+                    }).catch(error => {
+                        console.error("Error during point cloud loading:", error);
+                        this.log("CRITICAL ERROR: Check data path and server.", "error");
+                        this.loadBtn.disabled = false;
+                        this.loadBtn.innerHTML = '<i class="fa-solid fa-cubes"></i> LOAD LIDAR DATA';
+                    });
+                }
+            };
+
+            // Start the application
+            app.init();
+		});
+	</script>
+</body>
+</html>

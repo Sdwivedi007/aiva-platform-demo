@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIVA Command Core</title>
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <!-- HLS Video Player (video.js) -->
+    <link href="https://vjs.zencdn.net/8.5.2/video-js.css" rel="stylesheet" />
+    <!-- GIS Map (Leaflet.js) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --bg-color: #0d0f1a;
+            --primary-color: rgba(22, 28, 51, 0.5);
+            --accent-color: #00f6ff;
+            --accent-glow: rgba(0, 246, 255, 0.4);
+            --text-color: #e0e0e0;
+            --border-color: rgba(0, 246, 255, 0.2);
+            --danger-color: #ff4d6a;
+            --warning-color: #ffc107;
+            --success-color: #28a745;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(rgba(0, 246, 255, 0.05) 1px, transparent 1px);
+            background-size: 25px 25px;
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: rgba(13, 15, 26, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 10px 25px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            text-transform: uppercase;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.5em;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+
+        .toolbox-container {
+            width: 380px;
+            background-color: rgba(13, 15, 26, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .toolbox-section {
+            background-color: var(--primary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(0, 246, 255, 0.05);
+        }
+
+        .toolbox-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            color: var(--accent-color);
+        }
+        .toolbox-section h3 i { margin-right: 10px; }
+
+        .tool-buttons button {
+            display: block; width: 100%; padding: 12px; margin-bottom: 10px;
+            background-color: transparent; color: var(--text-color);
+            border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer;
+            transition: all 0.3s ease; text-align: left; font-size: 1em; font-family: inherit;
+        }
+        .tool-buttons button i { margin-right: 12px; width: 20px; color: var(--accent-color); }
+        .tool-buttons button:hover { background-color: rgba(0, 246, 255, 0.1); }
+        .tool-buttons button.active {
+            background-color: var(--accent-color); color: var(--bg-color); font-weight: bold;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+        .tool-buttons button.active i { color: var(--bg-color); }
+
+        .viewer-container {
+            flex: 1; padding: 20px; display: flex;
+            justify-content: center; align-items: center;
+        }
+
+        .view-content {
+            width: 100%; height: 100%; border-radius: 12px;
+            background-color: black; overflow: hidden; position: relative;
+            border: 2px solid var(--border-color);
+            box-shadow: inset 0 0 20px rgba(0, 246, 255, 0.2), 0 0 20px rgba(0, 246, 255, 0.2);
+        }
+        
+        .view-hidden { display: none !important; }
+
+        .view-placeholder {
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; height: 100%; text-align: center; z-index: 1;
+        }
+        .view-placeholder i { font-size: 5em; margin-bottom: 20px; color: var(--accent-color); text-shadow: 0 0 15px var(--accent-glow); }
+        .view-placeholder h2 { text-transform: uppercase; color: var(--accent-color); }
+
+        /* --- Tool-Specific View Styles --- */
+        #video-comparison-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        #video-comparison-container > div {
+            width: 50%;
+            height: 100%;
+            position: relative;
+            background: #000;
+        }
+        #video-comparison-container > div:first-child {
+            border-right: 2px solid var(--accent-color);
+        }
+        #video-comparison-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .video-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 10;
+            background: rgba(13, 15, 26, 0.7);
+            backdrop-filter: blur(5px);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9em;
+        }
+        #ai-view-container { position: relative; width: 100%; height: 100%; background: #000; }
+        #digital-twin-view { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; height: 100%; gap: 10px; padding: 10px; box-sizing: border-box; }
+        #map-view { width: 100%; height: 100%; border-radius: 10px; }
+        #analytics-view { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        /* Themed Library Overrides */
+        .video-js .vjs-big-play-button { background-color: rgba(0, 246, 255, 0.5) !important; border-color: var(--accent-color) !important; border-radius: 50%; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--primary-color) !important; color: var(--text-color) !important; box-shadow: 0 0 15px var(--accent-glow); }
+        .leaflet-container { background: var(--bg-color) !important; }
+        
+        /* Controls & Inputs */
+        .file-input-wrapper { margin-bottom: 15px; }
+        .file-input-wrapper label { display: block; margin-bottom: 5px; }
+        .file-input-wrapper input[type="file"] { width: 100%; }
+        button.primary-action, label.primary-action {
+            width: 100%; padding: 10px; background: var(--accent-color); color: var(--bg-color);
+            border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: bold;
+            box-sizing: border-box;
+        }
+        button:disabled { background: #555 !important; color: #888; cursor: not-allowed; }
+
+        /* System Log */
+        #log-list { list-style: none; padding: 0; margin: 0; max-height: 100px; overflow-y: auto; font-size: 0.9em; }
+        #log-list li { padding: 4px; border-bottom: 1px solid rgba(0, 246, 255, 0.1); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><i class="fa-solid fa-drafting-compass"></i> AIVA Construction Core</h1>
+    </header>
+
+    <div class="main-container">
+        <aside class="toolbox-container">
+            <div class="toolbox-section">
+                <h3><i class="fa-solid fa-layer-group"></i> Analysis Modules</h3>
+                <div class="tool-buttons">
+                    <button id="btn-map" class="tool-btn"><i class="fa-solid fa-map-location-dot"></i> GIS Overview</button>
+                    <button id="btn-live" class="tool-btn"><i class="fa-solid fa-video"></i> Live Site Feed</button>
+                    <button id="btn-comparison" class="tool-btn"><i class="fa-solid fa-columns"></i> Temporal Comparison</button>
+                    <button id="btn-ai" class="tool-btn"><i class="fa-solid fa-brain"></i> AI Perception</button>
+                    <button id="btn-twin" class="tool-btn active"><i class="fa-solid fa-cubes-stacked"></i> 4D Digital Twin</button>
+                    <button id="btn-analytics" class="tool-btn"><i class="fa-solid fa-chart-pie"></i> Analytics Dashboard</button>
+                </div>
+            </div>
+
+            <div id="controls-container">
+                <!-- Control panels are dynamically shown/hidden here -->
+            </div>
+            
+            <div class="toolbox-section" style="margin-top: auto;">
+                 <h3><i class="fa-solid fa-terminal"></i> System Log</h3>
+                 <ul id="log-list"></ul>
+            </div>
+        </aside>
+
+        <main class="viewer-container">
+            <!-- All view panels are placed here and toggled -->
+        </main>
+    </div>
+
+    <!-- JS Libraries -->
+    <script src="https://vjs.zencdn.net/8.5.2/video.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const elements = {
+            viewer: document.querySelector('.viewer-container'),
+            controls: document.getElementById('controls-container'),
+            logList: document.getElementById('log-list'),
+        };
+
+        const state = {
+            activeView: 'twin',
+            isInitialized: { map: false, live: false, analytics: false },
+            map: null, livePlayer: null, charts: {},
+        };
+
+        const log = (message, type = 'info') => {
+            const icons = { info: 'info-circle', success: 'check-circle', error: 'times-circle', warn: 'exclamation-triangle' };
+            const colors = { info: 'var(--text-color)', success: 'var(--success-color)', error: 'var(--danger-color)', warn: 'var(--warning-color)' };
+            const li = document.createElement('li');
+            li.innerHTML = `<i class="fa-solid fa-${icons[type]}" style="color: ${colors[type]}; margin-right: 8px;"></i>${message}`;
+            elements.logList.prepend(li);
+            if (elements.logList.children.length > 50) elements.logList.removeChild(elements.logList.lastChild);
+        };
+
+        const templates = {
+            map: () => ({
+                view: `<div id="map-container" style="height:100%; border-radius: 10px;"></div>`,
+                controls: `<h3><i class="fa-solid fa-sliders"></i> Map Controls</h3><p>Toggle layers and view points of interest.</p>`
+            }),
+            live: () => ({
+                view: `<video id="live-stream-player" class="video-js vjs-default-skin" style="width:100%; height:100%;"></video>`,
+                controls: `<h3><i class="fa-solid fa-signal"></i> Stream Controls</h3><p>Status: <span id="stream-status" style="color:var(--warning-color);">AWAITING SIGNAL</span></p>`
+            }),
+            comparison: () => ({
+                view: `<div id="video-comparison-container">
+                           <div><span class="video-label">SEQUENCE A</span><video id="video-a" controls></video></div>
+                           <div><span class="video-label">SEQUENCE B</span><video id="video-b" controls></video></div>
+                       </div>`,
+                controls: `<h3><i class="fa-solid fa-sliders"></i> Tool Controls</h3>
+                           <div class="file-input-wrapper"><label for="video-input-a">Sequence A Video</label><input type="file" id="video-input-a" accept="video/*"></div>
+                           <div class="file-input-wrapper"><label for="video-input-b">Sequence B Video</label><input type="file" id="video-input-b" accept="video/*"></div>`
+            }),
+            ai: () => ({
+                view: `<div id="ai-view-container"><img id="ai-image-preview" src="" style="display:none;"><video id="ai-video-preview" src="" style="display:none;" controls></video><canvas id="ai-canvas" style="position: absolute; top:0; left: 0; pointer-events: none;"></canvas>
+                       <div id="ai-placeholder" class="view-placeholder"><i class="fa-solid fa-upload"></i><h2>AWAITING MEDIA</h2></div></div>`,
+                controls: `<h3><i class="fa-solid fa-sliders"></i> Analysis Controls</h3>
+                           <input type="file" id="ai-input" accept="image/*,video/*" style="display:none;">
+                           <label for="ai-input" class="primary-action" style="display:block; text-align:center; margin-bottom:10px; cursor:pointer;">UPLOAD MEDIA</label>
+                           <button id="run-ai-btn" class="primary-action" disabled>RUN ANALYSIS</button>
+                           <hr style="border-color: var(--border-color); margin: 15px 0;">
+                           <h4><i class="fa-solid fa-list-check"></i> Results:</h4>
+                           <div id="ai-results" style="max-height: 150px; overflow-y: auto;"><p>Upload media to begin.</p></div>`
+            }),
+            twin: () => ({
+                view: `<div id="digital-twin-view"><div id="drone-video-wrapper" style="position:relative; background:#000; border-radius:5px; overflow:hidden;"><div class="video-label">ACTUAL</div><video id="drone-video" src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4" muted loop style="position:absolute; width:100%; height:100%; object-fit:cover;"></video></div>
+                       <div id="bim-model-wrapper" style="position:relative; background:#000; border-radius:5px; overflow:hidden;"><div class="video-label">PLANNED</div><div class="view-placeholder" style="z-index:0;"><i class="fa-solid fa-cube"></i><p id="bim-status"></p></div></div>
+                       <div id="timeline-control" style="grid-column: 1 / 3; display:flex; align-items:center; gap:15px; background:var(--primary-color); border-radius:8px; padding:10px;"><label for="timeline-slider" style="color:var(--accent-color);"><i class="fa-solid fa-calendar-week"></i></label><input type="range" id="timeline-slider" min="1" max="52" value="1" style="width:100%;"><div id="timeline-label" style="min-width:80px; text-align:center;">Week: 1</div></div></div>`,
+                controls: `<h3><i class="fa-solid fa-sliders"></i> 4D Timeline Control</h3><p>Scrub the timeline to compare planned vs. actual progress.</p>`
+            }),
+            analytics: () => ({
+                view: `<div id="analytics-view"><div class="chart-container" style="position:relative; height:100%;"><canvas id="ppe-chart"></canvas></div><div class="chart-container" style="position:relative; height:100%;"><canvas id="equipment-chart"></canvas></div></div>`,
+                controls: `<h3><i class="fa-solid fa-sliders"></i> Analytics Controls</h3><p>Viewing site-wide operational metrics.</p>`
+            })
+        };
+
+        function renderView(viewName) {
+            log(`Loading module: ${viewName.toUpperCase()}`);
+            state.activeView = viewName;
+            
+            document.querySelectorAll('.tool-buttons button').forEach(btn => btn.classList.toggle('active', btn.id === `btn-${viewName}`));
+
+            const content = templates[viewName]();
+            elements.viewer.innerHTML = `<div id="${viewName}-view" class="view-content">${content.view}</div>`;
+            elements.controls.innerHTML = `<div class="toolbox-section">${content.controls}</div>`;
+
+            // Post-render initialization and event binding
+            switch (viewName) {
+                case 'map': initMap(); break;
+                case 'live': initLive(); break;
+                case 'comparison': initComparison(); break;
+                case 'ai': initAI(); break;
+                case 'twin': initTwin(); break;
+                case 'analytics': initAnalytics(); break;
+            }
+            log(`Module ${viewName.toUpperCase()} loaded successfully.`, 'success');
+        }
+
+        // --- Initializer Functions ---
+        function initMap() { /* ... function from previous script ... */ }
+        function initLive() { /* ... function from previous script ... */ }
+        function initComparison() {
+            document.getElementById('video-input-a').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('video-a').src = URL.createObjectURL(e.target.files[0]); });
+            document.getElementById('video-input-b').addEventListener('change', e => { if(e.target.files[0]) document.getElementById('video-b').src = URL.createObjectURL(e.target.files[0]); });
+        }
+        
+        function initAI() {
+            const aiInput = document.getElementById('ai-input'), runAiBtn = document.getElementById('run-ai-btn');
+            const placeholder = document.getElementById('ai-placeholder');
+            const imagePreview = document.getElementById('ai-image-preview');
+            const videoPreview = document.getElementById('ai-video-preview');
+
+            aiInput.addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                placeholder.style.display = 'none';
+                runAiBtn.disabled = false;
+                const fileURL = URL.createObjectURL(file);
+                if (file.type.startsWith('image/')) {
+                    imagePreview.src = fileURL;
+                    imagePreview.style.display = 'block';
+                    videoPreview.style.display = 'none';
+                } else {
+                    videoPreview.src = fileURL;
+                    videoPreview.style.display = 'block';
+                    imagePreview.style.display = 'none';
+                }
+                log(`Media loaded: ${file.name}`);
+            });
+            runAiBtn.addEventListener('click', () => { log('Simulating AI analysis...', 'warn'); /* ... AI run logic ... */ });
+        }
+
+        function initTwin() {
+            const slider = document.getElementById('timeline-slider'), label = document.getElementById('timeline-label');
+            const video = document.getElementById('drone-video'), status = document.getElementById('bim-status');
+            const update = () => {
+                const week = slider.value;
+                label.textContent = `Week: ${week}`;
+                if (video.duration) video.currentTime = (week / 52) * video.duration;
+                let statusText = '';
+                if (week < 5) statusText = 'Foundations'; else if (week < 15) statusText = 'Structural Frame'; else if (week < 30) statusText = 'Exterior/Glazing'; else if (week < 45) statusText = 'Interior Fit-out'; else statusText = 'Landscaping';
+                status.textContent = `Phase: ${statusText}`;
+            };
+            slider.addEventListener('input', update);
+            update();
+        }
+
+        function initAnalytics() {
+            if (state.isInitialized.analytics) return;
+            const chartOptions = (title) => ({ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: title, color: 'var(--accent-color)' } } });
+            state.charts.ppe = new Chart('ppe-chart', {
+                type: 'doughnut', data: { labels: ['Compliant', 'Non-Compliant'], datasets: [{ data: [92, 8], backgroundColor: ['var(--success-color)', 'var(--danger-color)'], borderColor: 'var(--border-color)'}] }, options: chartOptions('PPE Compliance')
+            });
+            state.charts.equipment = new Chart('equipment-chart', {
+                type: 'bar', data: { labels: ['Excavator', 'Crane', 'Dozer'], datasets: [{ label: 'Hours Used', data: [42, 25, 31], backgroundColor: 'var(--accent-color)'}] }, options: chartOptions('Equipment Utilization')
+            });
+            state.isInitialized.analytics = true;
+        }
+
+        document.querySelector('.tool-buttons').addEventListener('click', e => {
+            const button = e.target.closest('button');
+            if (button) {
+                const viewName = button.id.replace('btn-', '');
+                if (viewName !== state.activeView) renderView(viewName);
+            }
+        });
+
+        log('AIVA Command Core Initialized.', 'success');
+        renderView('twin');
+    });
+    </script>
+</body>
+</html>
