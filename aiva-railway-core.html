@@ -129,6 +129,13 @@
                         cloudInput.value = initialPath;
                     }
                     
+                    if (!window.Potree) {
+                        this.log('Potree library failed to load. Check network/CSP for potree.all.js.', 'error');
+                        this.loadBtn.disabled = true;
+                        this.loadBtn.innerHTML = `<i class="fa-solid fa-xmark"></i> INIT FAILED`;
+                        return;
+                    }
+
                     try {
                         // The viewer MUST be initialized with the DOM element
                         this.viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
