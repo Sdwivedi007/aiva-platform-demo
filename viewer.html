@@ -17,19 +17,131 @@
             position: absolute;
             inset: 0;
         }
+        .viewer-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(12, 15, 26, 0.9);
+            border: 1px solid rgba(0, 246, 255, 0.2);
+            border-radius: 10px;
+            padding: 14px;
+            color: #e0e0e0;
+            font-family: "Segoe UI", sans-serif;
+            width: 320px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+        }
+        .viewer-ui h1 {
+            font-size: 18px;
+            margin: 0 0 12px;
+            color: #00f6ff;
+        }
+        .viewer-ui label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #8aa0b8;
+        }
+        .viewer-ui input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 246, 255, 0.2);
+            background: #0b1020;
+            color: #e0e0e0;
+        }
+        .viewer-ui button {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: none;
+            background: #00f6ff;
+            color: #041018;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .viewer-ui button:disabled {
+            background: #3a3f4e;
+            color: #7a7f8f;
+            cursor: not-allowed;
+        }
+        .viewer-status {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #9aa7bd;
+        }
     </style>
 </head>
 <body>
     <div id="potree_render_area"></div>
+    <div class="viewer-ui">
+        <h1>Potree Viewer</h1>
+        <label for="cloud-path">Point Cloud (cloud.js) Path</label>
+        <input id="cloud-path" type="text" placeholder="potree_data/MyScan/cloud.js">
+        <button id="load-cloud">Load Point Cloud</button>
+        <div id="viewer-status" class="viewer-status">Waiting for Potree…</div>
+    </div>
     <script src="https://cdn.jsdelivr.net/gh/potree/potree@1.8/build/potree/potree.all.js" onerror="this.onerror=null;this.src='https://unpkg.com/potree@1.8/build/potree/potree.all.js';"></script>
-    <script src="assets/js/viewer.js"></script>
     <script>
         window.addEventListener('DOMContentLoaded', async () => {
-            if (!window.viewer) {
-                console.error('Potree viewer script failed to load.');
+            const statusEl = document.getElementById('viewer-status');
+            const loadButton = document.getElementById('load-cloud');
+            const input = document.getElementById('cloud-path');
+            const params = new URLSearchParams(window.location.search);
+            const storedPath = localStorage.getItem('aiva_potree_cloud_path');
+            const initialPath = params.get('cloud') || storedPath || '';
+            if (input) {
+                input.value = initialPath;
+            }
+            if (!window.Potree) {
+                if (statusEl) {
+                    statusEl.textContent = 'Potree library failed to load. Check network/CSP.';
+                }
+                loadButton.disabled = true;
                 return;
             }
-            await window.viewer.initialize();
+
+            const viewer = new Potree.Viewer(document.getElementById('potree_render_area'));
+            viewer.setEDLEnabled(true);
+            viewer.setFOV(60);
+            viewer.setPointBudget(2_000_000);
+            viewer.setBackground(null);
+            viewer.loadSettingsFromURL();
+            if (statusEl) {
+                statusEl.textContent = 'Potree initialized. Load a point cloud.';
+            }
+
+            loadButton.addEventListener('click', () => {
+                const pathValue = input ? input.value.trim() : '';
+                if (!pathValue) {
+                    statusEl.textContent = 'Enter a valid cloud.js path before loading.';
+                    return;
+                }
+                loadButton.disabled = true;
+                statusEl.textContent = `Loading ${pathValue}…`;
+                localStorage.setItem('aiva_potree_cloud_path', pathValue);
+
+                Potree.loadPointCloud(pathValue, 'PointCloud', e => {
+                    if (e.type === 'loading_done') {
+                        const pointcloud = e.pointcloud;
+                        viewer.scene.addPointCloud(pointcloud);
+                        const material = pointcloud.material;
+                        material.size = 1;
+                        material.pointSizeType = Potree.PointSizeType.ADAPTIVE;
+                        material.shape = Potree.PointShape.SQUARE;
+                        viewer.fitToScreen();
+                        statusEl.textContent = 'Point cloud loaded.';
+                        loadButton.disabled = false;
+                    } else if (e.type === 'loading_failed') {
+                        statusEl.textContent = 'Failed to load point cloud. Check the path.';
+                        loadButton.disabled = false;
+                    }
+                }).catch(() => {
+                    statusEl.textContent = 'Failed to load point cloud. Check the path.';
+                    loadButton.disabled = false;
+                });
+            });
         });
     </script>
 </body>
