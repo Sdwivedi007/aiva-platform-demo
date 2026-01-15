@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIVA Potree Viewer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/potree/potree@1.8/build/potree/potree.css" onerror="this.onerror=null;this.href='https://unpkg.com/potree@1.8/build/potree/potree.css';">
+    <style>
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #0d0f1a;
+        }
+        #potree_render_area {
+            position: absolute;
+            inset: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="potree_render_area"></div>
+    <script src="https://cdn.jsdelivr.net/gh/potree/potree@1.8/build/potree/potree.all.js" onerror="this.onerror=null;this.src='https://unpkg.com/potree@1.8/build/potree/potree.all.js';"></script>
+    <script src="assets/js/viewer.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!window.viewer) {
+                console.error('Potree viewer script failed to load.');
+                return;
+            }
+            await window.viewer.initialize();
+        });
+    </script>
+</body>
+</html>
