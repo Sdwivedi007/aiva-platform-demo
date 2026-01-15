@@ -238,39 +238,6 @@
             width: 80px;
             }
 
-        /*3D VIEWER*/
-            #viewer-3d-canvas {
-            height: 500px;
-            background: #04070d;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-            }
-            .viewer-toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 12px;
-            }
-            .viewer-toolbar label {
-            font-size: 12px;
-            color: var(--light-blue-text);
-            }
-            .viewer-button {
-            background: var(--glow-blue);
-            border: none;
-            color: var(--dark-blue-bg);
-            padding: 6px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            }
-            .viewer-message {
-            color: var(--light-blue-text);
-            font-size: 13px;
-            margin-bottom: 10px;
-            }
-
         /*UPLOAD BUTTON (Separate)*/
             .upload-button {
             position: fixed;
@@ -352,25 +319,6 @@
         </div>
         <div id="comparison-container" class="comparison-container"> <!-- ... comparison content ... --> </div>
 
-        <div id="viewer-3d-modal" class="modal modal-large">
-            <div class="modal-header">
-                <h3>3D Terrain Viewer</h3>
-                <button class="modal-close" onclick="close3DViewer()">×</button>
-            </div>
-            <div class="modal-content">
-                <div class="viewer-toolbar">
-                    <label for="raster-select">Raster Source</label>
-                    <select id="raster-select"></select>
-                    <label for="exaggeration-range">Vertical Exaggeration</label>
-                    <input id="exaggeration-range" type="range" min="0.5" max="5" step="0.1" value="1.5">
-                    <button class="viewer-button" onclick="render3DTerrain()">Render</button>
-                </div>
-                <div id="viewer-3d-message" class="viewer-message"></div>
-                <div id="viewer-3d-canvas"></div>
-            </div>
-        </div>
-
-
         <!-- SCRIPT INCLUDES -->
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
@@ -381,16 +329,11 @@
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script> 
     <!-- plotty.js (for color scales) -->
     <script src="https://cdn.jsdelivr.net/npm/plotty@0.4.5/dist/plotty.min.js"></script>
-    <script>
-        window.exports = undefined;
-        window.module = undefined;
-    </script>
-    <script src="js/leaflet-geotiff.min.js"></script>
+    <script src="https://unpkg.com/leaflet-geotiff@2.0.7/leaflet-geotiff.min.js"></script>
+    <script src="https://unpkg.com/leaflet-geotiff-plotty@2.0.7/leaflet-geotiff-plotty.min.js"></script>
 
     <link href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/layout.min.css"  rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/index.min.js"></script> 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/OrbitControls.js"></script>
 
     <!-- MAIN SCRIPT --><script>
     
@@ -454,12 +397,7 @@
         let editHandler = null;
         let deleteHandler = null;
         let activeEditButton = null;
-        let threeDRenderer = null;
-        let threeDScene = null;
-        let threeDCamera = null;
-        let threeDControls = null;
-        let threeDAnimationId = null;
-        let threeDIsAnimating = false;
+        const potreeViewerPath = 'aiva-railway-core.html';
 
         // Data layers for uploaded GeoJSON / Raster
         const dataLayers = {}; // This will hold all uploaded layers by name
@@ -521,33 +459,6 @@
         if (backdrop) {
             backdrop.style.display = 'none';
         }
-    }
-
-    function close3DViewer() {
-        const modal = document.getElementById('viewer-3d-modal');
-        if (modal) {
-            modal.style.display = 'none';
-        }
-        const backdrop = document.getElementById('modal-backdrop');
-        if (backdrop) {
-            backdrop.style.display = 'none';
-        }
-        if (threeDRenderer) {
-            threeDRenderer.dispose();
-            threeDRenderer = null;
-        }
-        if (threeDScene) {
-            threeDScene = null;
-        }
-        if (threeDControls) {
-            threeDControls.dispose();
-            threeDControls = null;
-        }
-        const container = document.getElementById('viewer-3d-canvas');
-        if (container) {
-            container.innerHTML = '';
-        }
-        stop3DAnimation();
     }
 
     function getMarkerIcon(symbolType) {
@@ -656,7 +567,6 @@
             row.appendChild(controls);
             layersList.appendChild(row);
         });
-        updateRasterDropdown();
     }
 
     function toggleDataLayer(layerName, isEnabled) {
@@ -678,35 +588,6 @@
         }
     }
 
-    function updateRasterDropdown() {
-        const select = document.getElementById('raster-select');
-        if (!select) return;
-        select.innerHTML = '';
-        const rasterNames = Object.keys(dataLayerMeta).filter(name => dataLayerMeta[name]?.kind === 'raster');
-        if (rasterNames.length === 0) {
-            const option = document.createElement('option');
-            option.value = '__demo__';
-            option.textContent = 'Demo terrain (no raster uploaded)';
-            select.appendChild(option);
-            select.selectedIndex = 0;
-            return;
-        }
-        rasterNames.forEach(name => {
-            const option = document.createElement('option');
-            option.value = name;
-            option.textContent = `${name} (${dataLayerMeta[name].type})`;
-            select.appendChild(option);
-        });
-        select.selectedIndex = 0;
-    }
-
-    function stop3DAnimation() {
-        if (threeDAnimationId) {
-            cancelAnimationFrame(threeDAnimationId);
-            threeDAnimationId = null;
-        }
-        threeDIsAnimating = false;
-    }
 
     async function buildRasterMeta(file) {
         const arrayBuffer = await file.arrayBuffer();
@@ -730,25 +611,6 @@
         return { width, height, samplesPerPixel, noData, data: raster, min, max };
     }
 
-    function buildDemoRasterMeta() {
-        const width = 120;
-        const height = 120;
-        const samplesPerPixel = 1;
-        const noData = null;
-        const data = new Float32Array(width * height);
-        let min = Infinity;
-        let max = -Infinity;
-        for (let y = 0; y < height; y += 1) {
-            for (let x = 0; x < width; x += 1) {
-                const value = Math.sin(x / 8) * 10 + Math.cos(y / 10) * 8 + Math.sin((x + y) / 6) * 4;
-                const index = y * width + x;
-                data[index] = value;
-                min = Math.min(min, value);
-                max = Math.max(max, value);
-            }
-        }
-        return { width, height, samplesPerPixel, noData, data, min, max };
-    }
 
     // --- 1. TOGGLE MODALS ---
     function selectProject(projectId) {
@@ -803,14 +665,20 @@
             } else if (fileExtension === 'tif' || fileExtension === 'tiff') { // Handles GeoTIFF
                 const blob = new Blob([file]);
                 const fileUrl = URL.createObjectURL(blob);
-                const rgbRendererAvailable = L.LeafletGeotiff && L.LeafletGeotiff.RGB;
-                const renderer = layerType === 'Orthomosaic' && rgbRendererAvailable
-                    ? new L.LeafletGeotiff.RGB()
-                    : new L.LeafletGeotiff.Plotty({
+                const rgbRendererAvailable = L.LeafletGeotiff && typeof L.LeafletGeotiff.RGB === 'function';
+                const plottyRendererAvailable = L.LeafletGeotiff && typeof L.LeafletGeotiff.Plotty === 'function';
+                let renderer = null;
+                if (layerType === 'Orthomosaic' && rgbRendererAvailable) {
+                    renderer = new L.LeafletGeotiff.RGB();
+                } else if (plottyRendererAvailable) {
+                    renderer = new L.LeafletGeotiff.Plotty({
                         colorScale: layerType === 'DTM' ? 'terrain' : 'viridis',
                         displayMin: 0,
                         displayMax: 255
                     });
+                } else {
+                    throw new Error('GeoTIFF renderer is unavailable. Check leaflet-geotiff-plotty script loading.');
+                }
                 newLayer = L.leafletGeotiff(fileUrl, { renderer });
 
                 const rasterMeta = await buildRasterMeta(file);
@@ -990,123 +858,9 @@
     // --- 8. UTILITY FUNCTIONS & INITIALIZATION ---
             window.open3DViewer = () => {
                 closeAllModals();
-                const modal = document.getElementById('viewer-3d-modal');
-                const backdrop = document.getElementById('modal-backdrop');
-                if (modal && backdrop) {
-                    modal.style.display = 'flex';
-                    backdrop.style.display = 'block';
-                }
-                updateRasterDropdown();
-                const rasterSelect = document.getElementById('raster-select');
-                if (rasterSelect && rasterSelect.options.length > 0) {
-                    rasterSelect.selectedIndex = 0;
-                }
-                render3DTerrain();
+                window.open(potreeViewerPath, '_blank');
             };
             window.logout = () => { if (confirm("Are you sure you want to log out?")) { localStorage.removeItem('userToken'); localStorage.removeItem('isAuthenticated'); window.location.href = 'login.html'; } };
-
-            window.render3DTerrain = () => {
-                const select = document.getElementById('raster-select');
-                const message = document.getElementById('viewer-3d-message');
-                const container = document.getElementById('viewer-3d-canvas');
-                const exaggeration = parseFloat(document.getElementById('exaggeration-range').value || '1');
-                if (!select || !container || !message) return;
-
-                const layerName = select.value;
-                let meta = dataLayerMeta[layerName];
-                let label = layerName;
-                if (!meta || !meta.raster) {
-                    meta = { raster: buildDemoRasterMeta(), type: 'Demo Terrain' };
-                    label = 'Demo Terrain';
-                }
-                message.textContent = `Rendering ${label} (${meta.type})...`;
-
-                const { width, height, data, min, max, samplesPerPixel, noData } = meta.raster;
-                const maxSize = 200;
-                const stepX = Math.max(1, Math.floor(width / maxSize));
-                const stepY = Math.max(1, Math.floor(height / maxSize));
-                const segmentsX = Math.floor(width / stepX);
-                const segmentsY = Math.floor(height / stepY);
-
-                if (!threeDRenderer) {
-                    threeDRenderer = new THREE.WebGLRenderer({ antialias: true });
-                    threeDRenderer.setSize(container.clientWidth, container.clientHeight);
-                    container.innerHTML = '';
-                    container.appendChild(threeDRenderer.domElement);
-                } else {
-                    threeDRenderer.setSize(container.clientWidth, container.clientHeight);
-                    container.innerHTML = '';
-                    container.appendChild(threeDRenderer.domElement);
-                }
-
-                threeDScene = new THREE.Scene();
-                threeDScene.background = new THREE.Color(0x05070d);
-                threeDCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-                threeDCamera.position.set(0, -200, 200);
-
-                threeDControls = new THREE.OrbitControls(threeDCamera, threeDRenderer.domElement);
-                threeDControls.enableDamping = true;
-                threeDControls.dampingFactor = 0.1;
-
-                const geometry = new THREE.PlaneGeometry(segmentsX, segmentsY, segmentsX - 1, segmentsY - 1);
-                geometry.rotateX(-Math.PI / 2);
-
-                const positions = geometry.attributes.position;
-                const colors = [];
-                const range = max - min || 1;
-                for (let y = 0; y < segmentsY; y += 1) {
-                    for (let x = 0; x < segmentsX; x += 1) {
-                        const dataX = x * stepX;
-                        const dataY = y * stepY;
-                        const index = (dataY * width + dataX) * samplesPerPixel;
-                        const heightValue = data[index];
-                        const normalized = heightValue === noData || Number.isNaN(heightValue)
-                            ? 0
-                            : (heightValue - min) / range;
-                        const z = normalized * 50 * exaggeration;
-                        const vertexIndex = y * segmentsX + x;
-                        positions.setY(vertexIndex, z);
-                        const color = new THREE.Color().setHSL(0.65 - normalized * 0.55, 0.7, 0.5);
-                        colors.push(color.r, color.g, color.b);
-                    }
-                }
-                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-                geometry.computeVertexNormals();
-
-                const material = new THREE.MeshStandardMaterial({
-                    vertexColors: true,
-                    roughness: 0.8,
-                    metalness: 0.1,
-                    side: THREE.DoubleSide
-                });
-                const mesh = new THREE.Mesh(geometry, material);
-                threeDScene.add(mesh);
-
-                const light = new THREE.DirectionalLight(0xffffff, 1);
-                light.position.set(50, -50, 100);
-                threeDScene.add(light);
-                threeDScene.add(new THREE.AmbientLight(0x404040));
-
-                stop3DAnimation();
-                threeDIsAnimating = true;
-                function animate() {
-                    if (!threeDIsAnimating || !threeDRenderer || !threeDScene || !threeDCamera) return;
-                    threeDAnimationId = requestAnimationFrame(animate);
-                    if (threeDControls) {
-                        threeDControls.update();
-                    }
-                    threeDRenderer.render(threeDScene, threeDCamera);
-                }
-                animate();
-                message.textContent = `Rendered ${label}. Use mouse to orbit/zoom.`;
-            };
-
-            const rasterSelect = document.getElementById('raster-select');
-            if (rasterSelect) {
-                rasterSelect.addEventListener('change', () => {
-                    render3DTerrain();
-                });
-            }
 
             const projectListContainer = document.getElementById('projects-list');
             projects.forEach(p => {
