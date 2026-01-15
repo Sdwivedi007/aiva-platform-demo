@@ -145,10 +145,131 @@
             color: #fff;
             box-shadow: 0 0 10px #1c539c;
             }
-            .threeDView-button i {
+                        .threeDView-button i {
             font-size: 20px;
             }
 
+        /*MODALS*/
+            .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 12, 26, 0.75);
+            display: none;
+            z-index: 1100;
+            }
+            .modal {
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 360px;
+            max-height: 70vh;
+            background: rgba(8, 20, 35, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            z-index: 1200;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+            }
+            .modal-large {
+            width: 80vw;
+            max-width: 1100px;
+            }
+            .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--highlight-text);
+            }
+            .modal-content {
+            padding: 12px 16px;
+            overflow-y: auto;
+            }
+            .modal-close {
+            background: transparent;
+            color: var(--highlight-text);
+            border: none;
+            font-size: 22px;
+            cursor: pointer;
+            }
+            .list-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            }
+            .list-item:hover,
+            .list-item.active {
+            border-color: var(--glow-blue);
+            background: rgba(0, 191, 255, 0.1);
+            }
+            .layer-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(53, 162, 229, 0.15);
+            }
+            .layer-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            }
+            .layer-name {
+            font-size: 14px;
+            color: var(--highlight-text);
+            }
+            .layer-type {
+            font-size: 12px;
+            color: var(--light-blue-text);
+            }
+            .layer-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            }
+            .layer-controls input[type="range"] {
+            width: 80px;
+            }
+
+        /*3D VIEWER*/
+            #viewer-3d-canvas {
+            height: 500px;
+            background: #04070d;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            }
+            .viewer-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            }
+            .viewer-toolbar label {
+            font-size: 12px;
+            color: var(--light-blue-text);
+            }
+            .viewer-button {
+            background: var(--glow-blue);
+            border: none;
+            color: var(--dark-blue-bg);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            }
+            .viewer-message {
+            color: var(--light-blue-text);
+            font-size: 13px;
+            margin-bottom: 10px;
+            }
         /*UPLOAD BUTTON (Separate)*/
             .upload-button {
             position: fixed;
@@ -172,8 +293,8 @@
         <!-- Main Content Container -->
          <div id="map"></div>
 
-        <!-- ADD THIS ANYWHERE INSIDE THE BODY TAG -->
-        <input type="file" id="file-upload-input" accept=".geojson,.kml,.zip,.tif,.tiff" style="display: none;">
+<!-- ADD THIS ANYWHERE INSIDE THE BODY TAG -->␊
+        <input type="file" id="file-upload-input" accept=".geojson,.kml,.zip,.tif,.tiff" style="display: none;" multiple>
 
         <!-- Header -->
         <header class="header">
@@ -193,12 +314,14 @@
             <button class="tool-button" title="Compare Layers" onclick="activateComparisonMode()"><i class="fas fa-columns"></i></button>
         </div>
 
-        <!-- RIGHT Sidebar (for Tools) -->
+         <!-- RIGHT Sidebar (for Tools) -->
         <div class="sidebar sidebar-right">
             <button class="tool-button" title="Measure Distance" onclick="startDistanceMeasure()"><i class="fas fa-ruler-horizontal"></i></button>
             <button class="tool-button" title="Measure Area" onclick="startAreaMeasure()"><i class="fas fa-draw-polygon"></i></button>
             <button class="tool-button" title="Add Point Tag" onclick="startPointTagging()"><i class="fas fa-map-pin"></i></button>  
             <button class="tool-button" title="Measure Volume" onclick="startVolumeMeasure()"><i class="fas fa-cube"></i></button>
+            <button class="tool-button" title="Edit Features" onclick="toggleEditMode()"><i class="fas fa-pen-to-square"></i></button>
+            <button class="tool-button" title="Delete Features" onclick="toggleDeleteMode()"><i class="fas fa-eraser"></i></button>
         <div class="sidebar-divider"></div>       
             <button class="tool-button" title="Clear Drawings" onclick="clearDrawings()"><i class="fas fa-trash"></i></button>
         </div>
@@ -210,21 +333,48 @@
         
 
 
-        <!-- Modals & Comparison Container (These can remain the same from the last version) -->
+         <!-- Modals & Comparison Container -->
         <div id="modal-backdrop" class="modal-backdrop" onclick="closeAllModals()"></div>
-        <div id="projects-modal" class="modal"> <!-- ... modal content ... --> </div>
-        <div id="layers-modal" class="modal"> <!-- ... modal content ... --> </div>
-        <div id="comparison-container" class="comparison-container"> <!-- ... comparison content ... --> </div>
         <div id="projects-modal" class="modal">
-        <div class="modal-content"></div>  <!-- ✅ ADD THIS INSIDE --></div>
+            <div class="modal-header">
+                <h3>Projects</h3>
+                <button class="modal-close" onclick="closeAllModals()">×</button>
+            </div>
+            <div class="modal-content" id="projects-list"></div>
+        </div>
+        <div id="layers-modal" class="modal">
+            <div class="modal-header">
+                <h3>Layers</h3>
+                <button class="modal-close" onclick="closeAllModals()">×</button>
+            </div>
+            <div class="modal-content" id="layers-list"></div>
+        </div>
+        <div id="comparison-container" class="comparison-container"> <!-- ... comparison content ... --> </div>
 
+        <div id="viewer-3d-modal" class="modal modal-large">
+            <div class="modal-header">
+                <h3>3D Terrain Viewer</h3>
+                <button class="modal-close" onclick="close3DViewer()">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="viewer-toolbar">
+                    <label for="raster-select">Raster Source</label>
+                    <select id="raster-select"></select>
+                    <label for="exaggeration-range">Vertical Exaggeration</label>
+                    <input id="exaggeration-range" type="range" min="0.5" max="5" step="0.1" value="1.5">
+                    <button class="viewer-button" onclick="render3DTerrain()">Render</button>
+                </div>
+                <div id="viewer-3d-message" class="viewer-message"></div>
+                <div id="viewer-3d-canvas"></div>
+            </div>
+        </div>
 
         <!-- SCRIPT INCLUDES -->
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-        <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
-        <script src="/js/leaflet-geotiff.min.js"></script>
-        <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
+         <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>␊
+        <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>␊
+        <script src="/js/leaflet-geotiff.min.js"></script>␊
+        <script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>␊
 
     <!-- geotiff.js (required for parsing) -->
     <script src="https://cdn.jsdelivr.net/npm/geotiff@2.0.7/dist-browser/geotiff.js"></script> 
@@ -233,6 +383,8 @@
 
     <link href="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/layout.min.css"  rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/leaflet-side-by-side@2.2.0/index.min.js"></script> 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/OrbitControls.js"></script>
 
     <!-- MAIN SCRIPT --><script>
     
@@ -285,7 +437,7 @@
         ];
 
         // --- INITIALIZE MAP & STATE ---
-        const mainMap = L.map('map', { zoomControl: false }).setView([20.59, 78.96], 5);
+         const mainMap = L.map('map', { zoomControl: false }).setView([20.59, 78.96], 5);
         const drawnItems = new L.featureGroup().addTo(mainMap);
         const projectSymbolsLayer = L.featureGroup().addTo(mainMap);
         let activeDrawer = null;
@@ -293,9 +445,19 @@
         let comparisonMap = null;
         let isComparing = false;
         let sideBySideControl = null;
-        
-        // Data layers for uploaded GeoJSON
+        let editHandler = null;
+        let deleteHandler = null;
+        let activeEditButton = null;
+        let threeDRenderer = null;
+        let threeDScene = null;
+        let threeDCamera = null;
+        let threeDControls = null;
+        let threeDAnimationId = null;
+        let threeDIsAnimating = false;
+
+        // Data layers for uploaded GeoJSON / Raster
         const dataLayers = {}; // This will hold all uploaded layers by name
+        const dataLayerMeta = {}; // Metadata by layer name
         // --- MAP CONTROLS ---
         L.control.scale({ position: 'bottomleft', maxWidth: 100, imperial: false }).addTo(mainMap);    
         // --- BASE MAP LAYER ---
@@ -306,8 +468,8 @@
         }).addTo(mainMap);
        
         
-    function showNotification(message, duration = 3000) {
-        const notification = document.createElement('div');
+    function showNotification(message, duration = 3000) {␊
+        const notification = document.createElement('div');␊
         notification.style.position = 'fixed';
         notification.style.top = '20px';
         notification.style.right = '20px';
@@ -333,6 +495,54 @@
         }, duration);
     }
 
+    function toggleModal(modalId) {
+        const modal = document.getElementById(modalId);
+        const backdrop = document.getElementById('modal-backdrop');
+        if (!modal || !backdrop) return;
+        const isOpen = modal.style.display === 'flex';
+        closeAllModals();
+        if (!isOpen) {
+            modal.style.display = 'flex';
+            backdrop.style.display = 'block';
+        }
+    }
+
+    function closeAllModals() {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+        const backdrop = document.getElementById('modal-backdrop');
+        if (backdrop) {
+            backdrop.style.display = 'none';
+        }
+    }
+
+    function close3DViewer() {
+        const modal = document.getElementById('viewer-3d-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        const backdrop = document.getElementById('modal-backdrop');
+        if (backdrop) {
+            backdrop.style.display = 'none';
+        }
+        if (threeDRenderer) {
+            threeDRenderer.dispose();
+            threeDRenderer = null;
+        }
+        if (threeDScene) {
+            threeDScene = null;
+        }
+        if (threeDControls) {
+            threeDControls.dispose();
+            threeDControls = null;
+        }
+        const container = document.getElementById('viewer-3d-canvas');
+        if (container) {
+            container.innerHTML = '';
+        }
+        stop3DAnimation();
+    }
     function getMarkerIcon(symbolType) {
                 // Find the best matching key in iconMapping
                 let key = Object.keys(iconMapping).find(k => k.toLowerCase() === symbolType.toLowerCase());
@@ -350,16 +560,187 @@
                 });
     }
 
-    function updateProjectSymbols() {
-                projectSymbolsLayer.clearLayers();
-                if (currentProject && currentProject.symbols) {
-                    currentProject.symbols.forEach(symbol => {
-                        const icon = getMarkerIcon(symbol.type); // <-- THIS WAS THE MISSING CALL
+   function updateProjectSymbols() {␊
+                projectSymbolsLayer.clearLayers();␊
+                if (currentProject && currentProject.symbols) {␊
+                    currentProject.symbols.forEach(symbol => {␊
+                        const icon = getMarkerIcon(symbol.type); // <-- THIS WAS THE MISSING CALL␊
                         L.marker(symbol.latlng, { icon: icon })
                             .bindPopup(symbol.info)
                             .addTo(projectSymbolsLayer);
                     });
-                }
+                    }
+    }
+
+    function classifyLayer(layerName, extension) {
+        const normalized = layerName.toLowerCase();
+        if (['tif', 'tiff'].includes(extension)) {
+            if (normalized.includes('dtm')) return 'DTM';
+            if (normalized.includes('dsm')) return 'DSM';
+            if (normalized.includes('ortho') || normalized.includes('orthomosaic')) return 'Orthomosaic';
+            return 'Raster';
+        }
+        if (normalized.includes('contour')) return 'Contour';
+        return 'Vector';
+    }
+
+    function getVectorStyle(layerType) {
+        if (layerType === 'Contour') {
+            return { color: '#f0ad4e', weight: 1.5, dashArray: '4 4' };
+        }
+        return { color: '#5bc0de', weight: 2, fillOpacity: 0.2 };
+    }
+
+    function updateDataLayerList() {
+        const layersList = document.getElementById('layers-list');
+        if (!layersList) return;
+        layersList.innerHTML = '';
+        const layerNames = Object.keys(dataLayers);
+        if (layerNames.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'layer-row';
+            empty.textContent = 'No layers uploaded yet.';
+            layersList.appendChild(empty);
+            return;
+        }
+        layerNames.forEach(layerName => {
+            const meta = dataLayerMeta[layerName] || {};
+            const row = document.createElement('div');
+            row.className = 'layer-row';
+            const metaCol = document.createElement('div');
+            metaCol.className = 'layer-meta';
+            const nameEl = document.createElement('div');
+            nameEl.className = 'layer-name';
+            nameEl.textContent = layerName;
+            const typeEl = document.createElement('div');
+            typeEl.className = 'layer-type';
+            typeEl.textContent = meta.type || 'Layer';
+            metaCol.appendChild(nameEl);
+            metaCol.appendChild(typeEl);
+
+            const controls = document.createElement('div');
+            controls.className = 'layer-controls';
+            const toggle = document.createElement('input');
+            toggle.type = 'checkbox';
+            const isVisible = meta.kind === 'vector'
+                ? drawnItems.hasLayer(dataLayers[layerName])
+                : mainMap.hasLayer(dataLayers[layerName]);
+            toggle.checked = isVisible;
+            toggle.onchange = () => toggleDataLayer(layerName, toggle.checked);
+            controls.appendChild(toggle);
+
+            if (meta.kind === 'raster') {
+                const opacity = document.createElement('input');
+                opacity.type = 'range';
+                opacity.min = 0.2;
+                opacity.max = 1;
+                opacity.step = 0.1;
+                opacity.value = meta.opacity || 0.9;
+                opacity.oninput = () => {
+                    meta.opacity = parseFloat(opacity.value);
+                    if (dataLayers[layerName].setOpacity) {
+                        dataLayers[layerName].setOpacity(meta.opacity);
+                    }
+                };
+                controls.appendChild(opacity);
+            }
+
+            row.appendChild(metaCol);
+            row.appendChild(controls);
+            layersList.appendChild(row);
+        });
+        updateRasterDropdown();
+    }
+
+    function toggleDataLayer(layerName, isEnabled) {
+        const layer = dataLayers[layerName];
+        const meta = dataLayerMeta[layerName];
+        if (!layer) return;
+        if (meta?.kind === 'vector') {
+            if (isEnabled) {
+                drawnItems.addLayer(layer);
+            } else {
+                drawnItems.removeLayer(layer);
+            }
+            return;
+        }
+        if (isEnabled) {
+            layer.addTo(mainMap);
+        } else {
+            mainMap.removeLayer(layer);
+        }
+    }
+
+    function updateRasterDropdown() {
+        const select = document.getElementById('raster-select');
+        if (!select) return;
+        select.innerHTML = '';
+        const rasterNames = Object.keys(dataLayerMeta).filter(name => dataLayerMeta[name]?.kind === 'raster');
+        if (rasterNames.length === 0) {
+            const option = document.createElement('option');
+            option.value = '__demo__';
+            option.textContent = 'Demo terrain (no raster uploaded)';
+            select.appendChild(option);
+            select.selectedIndex = 0;
+            return;
+        }
+        rasterNames.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = `${name} (${dataLayerMeta[name].type})`;
+            select.appendChild(option);
+        });
+        select.selectedIndex = 0;
+    }
+
+    function stop3DAnimation() {
+        if (threeDAnimationId) {
+            cancelAnimationFrame(threeDAnimationId);
+            threeDAnimationId = null;
+        }
+        threeDIsAnimating = false;
+    }
+
+    async function buildRasterMeta(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        const tiff = await GeoTIFF.fromArrayBuffer(arrayBuffer);
+        const image = await tiff.getImage();
+        const width = image.getWidth();
+        const height = image.getHeight();
+        const samplesPerPixel = image.getSamplesPerPixel();
+        const noData = image.getGDALNoData();
+        const raster = await image.readRasters({ interleave: true });
+        let min = Infinity;
+        let max = -Infinity;
+        for (let i = 0; i < raster.length; i += samplesPerPixel) {
+            const value = raster[i];
+            if (value === noData || Number.isNaN(value)) continue;
+            if (value < min) min = value;
+            if (value > max) max = value;
+        }
+        if (!Number.isFinite(min)) min = 0;
+        if (!Number.isFinite(max)) max = 1;
+        return { width, height, samplesPerPixel, noData, data: raster, min, max };
+    }
+
+    function buildDemoRasterMeta() {
+        const width = 120;
+        const height = 120;
+        const samplesPerPixel = 1;
+        const noData = null;
+        const data = new Float32Array(width * height);
+        let min = Infinity;
+        let max = -Infinity;
+        for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+                const value = Math.sin(x / 8) * 10 + Math.cos(y / 10) * 8 + Math.sin((x + y) / 6) * 4;
+                const index = y * width + x;
+                data[index] = value;
+                min = Math.min(min, value);
+                max = Math.max(max, value);
+            }
+        }
+        return { width, height, samplesPerPixel, noData, data, min, max };
     }
 
     // --- 1. TOGGLE MODALS ---
@@ -371,7 +752,10 @@
                     document.querySelectorAll('#projects-modal .list-item').forEach(item => {
                         item.classList.toggle('active', item.dataset.projectId === projectId);
                     });
-                    document.getElementById('inspection-date').textContent = currentProject.name;
+                         const inspectionLabel = document.getElementById('inspection-date');
+                    if (inspectionLabel) {
+                        inspectionLabel.textContent = currentProject.name;
+                    }
                     closeAllModals();
                 }
      }
@@ -386,52 +770,74 @@
     for (const file of event.target.files) {
         const layerName = file.name;
         const fileExtension = file.name.split('.').pop().toLowerCase();
+        const layerType = classifyLayer(layerName, fileExtension);
         showNotification(`Processing ${layerName}...`);
         try {
             let newLayer;
-            // --- ROUTE THE FILE BASED ON ITS EXTENSION ---
             if (fileExtension === 'zip') { // Handles zipped Shapefiles
                 const buffer = await file.arrayBuffer();
                 const geojson = await shp(buffer);
-                newLayer = L.geoJSON(geojson, { style: { color: '#ff7800', weight: 2 } });
+                newLayer = L.geoJSON(geojson, { style: getVectorStyle(layerType) });
 
             } else if (fileExtension === 'geojson') { // Handles GeoJSON only
-    const fileText = await file.text();
-    const geojson = JSON.parse(fileText);
-    newLayer = L.geoJSON(geojson, { style: { color: '#5bc0de', weight: 2 } });
-} else if (fileExtension === 'kml') {
-    const fileText = await file.text();
-    const blob = new Blob([fileText], { type: 'application/vnd.google-earth.kml+xml' });
-    const url = URL.createObjectURL(blob);
-    newLayer = omnivore.kml(url).on('ready', function() {
-        mainMap.fitBounds(newLayer.getBounds());
-    });
+                const fileText = await file.text();
+                const geojson = JSON.parse(fileText);
+                newLayer = L.geoJSON(geojson, { style: getVectorStyle(layerType) });
+
+            } else if (fileExtension === 'kml') {
+                const fileText = await file.text();
+                const blob = new Blob([fileText], { type: 'application/vnd.google-earth.kml+xml' });
+                const url = URL.createObjectURL(blob);
+                newLayer = omnivore.kml(url, null, L.geoJSON(null, { style: getVectorStyle(layerType) }))
+                    .on('ready', function() {
+                        mainMap.fitBounds(newLayer.getBounds());
+                    });
+
             } else if (fileExtension === 'tif' || fileExtension === 'tiff') { // Handles GeoTIFF
-                
-                // THIS IS THE CRITICAL FIX: We create a URL from the local file data
                 const blob = new Blob([file]);
                 const fileUrl = URL.createObjectURL(blob);
+                const rgbRendererAvailable = L.LeafletGeotiff && L.LeafletGeotiff.RGB;
+                const renderer = layerType === 'Orthomosaic' && rgbRendererAvailable
+                    ? new L.LeafletGeotiff.RGB()
+                    : new L.LeafletGeotiff.Plotty({
+                        colorScale: layerType === 'DTM' ? 'terrain' : 'viridis',
+                        displayMin: 0,
+                        displayMax: 255
+                    });
+                newLayer = L.leafletGeotiff(fileUrl, { renderer });
 
-                // Now, we pass the generated URL to the library, which is what it expects.
-               newLayer = L.leafletGeotiff(fileUrl, {
-  renderer: new L.LeafletGeotiff.Plotty({
-    colorScale: 'viridis',
-    displayMin: 0,
-    displayMax: 255
-  })
-});
-
+                const rasterMeta = await buildRasterMeta(file);
+                dataLayerMeta[layerName] = {
+                    kind: 'raster',
+                    type: layerType,
+                    opacity: 0.9,
+                    raster: rasterMeta
+                };
             } else {
                 throw new Error('Unsupported file type');
             }
             
-            // --- IF A LAYER WAS SUCCESSFULLY CREATED ---
             if (newLayer) {
+                if (!dataLayerMeta[layerName]) {
+                    dataLayerMeta[layerName] = {
+                        kind: 'vector',
+                        type: layerType
+                    };
+                }
                 dataLayers[layerName] = newLayer;
+                if (dataLayerMeta[layerName].kind === 'vector') {
+                    newLayer.eachLayer?.(layer => {
+                        layer._isUserDrawing = false;
+                    });
+                    drawnItems.addLayer(newLayer);
+                } else {
+                    newLayer.addTo(mainMap);
+                    if (newLayer.setOpacity) {
+                        newLayer.setOpacity(dataLayerMeta[layerName].opacity || 0.9);
+                    }
+                }
                 updateDataLayerList();
-                newLayer.addTo(mainMap);
 
-                // Wait for the layer to load its data before trying to get bounds
                 newLayer.on('load', () => {
                     if (newLayer.getBounds && newLayer.getBounds().isValid()) {
                         mainMap.fitBounds(newLayer.getBounds());
@@ -449,13 +855,11 @@
 
     fileInput.value = ''; // Reset the input for the next upload
    });
-    const updateDataLayerList = () => { /* ... same as before ... */ };
-    window.toggleDataLayer = (layerName, checkbox) => { /* ... same as before ... */ };
             
     // --- 6. FUNCTIONAL COMPARISON TOOL ---
      window.activateComparisonMode = () => {
                 if (sideBySideControl) { sideBySideControl.remove(); sideBySideControl = null; showNotification("Comparison mode deactivated."); return; }
-                const rasterLayers = Object.keys(dataLayers).filter(name => dataLayers[name] instanceof L.LeafletGeotiff);
+                  const rasterLayers = Object.keys(dataLayers).filter(name => dataLayerMeta[name]?.kind === 'raster');
                 if (rasterLayers.length < 2) { showNotification("You need at least two uploaded raster layers (e.g., GeoTIFF) to compare.", 5000); return; }
                 
                 const layer1Name = prompt("Select BASE layer (Left):\n" + rasterLayers.join('\n'));
@@ -467,21 +871,107 @@
                 } else { showNotification("Invalid selection. Please choose two different, existing raster layers.", 5000); }
          };
             
-    // --- 7. MEASUREMENT & DRAWING TOOLS ---
+     // --- 7. MEASUREMENT & DRAWING TOOLS ---
             const stopDrawing = () => { if (activeDrawer) activeDrawer.disable(); };
-            window.startDistanceMeasure = () => { stopDrawing(); activeDrawer = new L.Draw.Polyline(mainMap, { shapeOptions: { color: '#00aaff' } }); activeDrawer.enable(); };
-            window.startAreaMeasure = () => { stopDrawing(); activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: '#00aaff' } }); activeDrawer.enable(); };
-            window.startPointTagging = () => { stopDrawing(); activeDrawer = new L.Draw.Marker(mainMap); activeDrawer.type = 'tag'; activeDrawer.enable(); };
-            window.startVolumeMeasure = () => { stopDrawing(); activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: '#f0ad4e' }, showArea: true }); activeDrawer.type = 'volume'; activeDrawer.enable(); };
-            window.clearDrawings = () => drawnItems.clearLayers();
+            const stopEditing = () => {
+                if (editHandler) editHandler.disable();
+                if (deleteHandler) deleteHandler.disable();
+            };
+            const resetActiveTool = () => {
+                if (activeEditButton) activeEditButton.classList.remove('active');
+                activeEditButton = null;
+            };
+            const activateToolButton = (buttonSelector) => {
+                resetActiveTool();
+                const button = document.querySelector(buttonSelector);
+                if (button) {
+                    button.classList.add('active');
+                    activeEditButton = button;
+                }
+            };
+            window.startDistanceMeasure = () => {
+                stopDrawing();
+                stopEditing();
+                activeDrawer = new L.Draw.Polyline(mainMap, { shapeOptions: { color: '#00aaff' } });
+                activeDrawer.enable();
+                activateToolButton('[title="Measure Distance"]');
+            };
+            window.startAreaMeasure = () => {
+                stopDrawing();
+                stopEditing();
+                activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: '#00aaff' } });
+                activeDrawer.enable();
+                activateToolButton('[title="Measure Area"]');
+            };
+            window.startPointTagging = () => {
+                stopDrawing();
+                stopEditing();
+                activeDrawer = new L.Draw.Marker(mainMap);
+                activeDrawer.type = 'tag';
+                activeDrawer.enable();
+                activateToolButton('[title="Add Point Tag"]');
+            };
+            window.startVolumeMeasure = () => {
+                stopDrawing();
+                stopEditing();
+                activeDrawer = new L.Draw.Polygon(mainMap, { shapeOptions: { color: '#f0ad4e' }, showArea: true });
+                activeDrawer.type = 'volume';
+                activeDrawer.enable();
+                activateToolButton('[title="Measure Volume"]');
+            };
+            window.toggleEditMode = () => {
+                stopDrawing();
+                if (!editHandler) {
+                    editHandler = new L.EditToolbar.Edit(mainMap, { featureGroup: drawnItems });
+                }
+                const isActive = editHandler.enabled();
+                stopEditing();
+                resetActiveTool();
+                if (!isActive) {
+                    editHandler.enable();
+                    activateToolButton('[title="Edit Features"]');
+                }
+            };
+            window.toggleDeleteMode = () => {
+                stopDrawing();
+                if (!deleteHandler) {
+                    deleteHandler = new L.EditToolbar.Delete(mainMap, { featureGroup: drawnItems });
+                }
+                const isActive = deleteHandler.enabled();
+                stopEditing();
+                resetActiveTool();
+                if (!isActive) {
+                    deleteHandler.enable();
+                    activateToolButton('[title="Delete Features"]');
+                }
+            };
+            window.clearDrawings = () => {
+                const layersToRemove = [];
+                drawnItems.eachLayer(layer => {
+                    if (layer._isUserDrawing) {
+                        layersToRemove.push(layer);
+                    }
+                });
+                layersToRemove.forEach(layer => drawnItems.removeLayer(layer));
+                showNotification('User drawings cleared.');
+            };
             mainMap.on('draw:created', (event) => {
-                const layer = event.layer; const type = event.layerType; const drawerType = event.target.type;
+                const layer = event.layer;
+                const type = event.layerType;
+                const drawerType = activeDrawer ? activeDrawer.type : null;
+                layer._isUserDrawing = true;
                 drawnItems.addLayer(layer);
                 if (type === 'polygon' && drawerType === 'volume') {
                     const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
                     layer.bindPopup(`<div style="font-size:14px;min-width:180px;"><b>Surface Area:</b> ${area.toFixed(2).toLocaleString()} m²<br><div style="margin-top:8px;"><input type="number" id="depth-input-${layer._leaflet_id}" placeholder="Height/Depth (m)" style="width:100px;padding:4px;"><button onclick="calculateVolume(${layer._leaflet_id}, ${area})" style="margin-left:5px;padding:4px 8px;">Calc</button></div><div id="vol-result-${layer._leaflet_id}" style="margin-top:8px;font-weight:bold;"></div></div>`).openPopup();
                 } else if (type === 'polygon') { const area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]); layer.bindPopup(`<b>Area:</b> ${(area / 1000000).toFixed(2)} km²`).openPopup(); }
                 else if (type === 'polyline') { let d = 0; layer.getLatLngs().reduce((a, b) => { d += a.distanceTo(b); return b; }); layer.bindPopup(`<b>Distance:</b> ${(d / 1000).toFixed(2)} km`).openPopup(); }
+            });
+            mainMap.on('draw:edited', () => {
+                showNotification('Edits saved.');
+            });
+            mainMap.on('draw:deleted', () => {
+                showNotification('Features deleted.');
             });
             window.calculateVolume = (layerId, area) => {
                 const depthInput = document.getElementById(`depth-input-${layerId}`); const depth = depthInput ? depthInput.value : null;
@@ -491,10 +981,127 @@
     };
 
     // --- 8. UTILITY FUNCTIONS & INITIALIZATION ---
-            window.open3DViewer = () => { window.open('/Potree_1.8.2/examples/viewer.html', '_blank'); };
-            window.logout = () => { if (confirm("Are you sure you want to log out?")) { localStorage.removeItem('isAuthenticated'); window.location.href = 'login.html'; } };
+            window.open3DViewer = () => {
+                closeAllModals();
+                const modal = document.getElementById('viewer-3d-modal');
+                const backdrop = document.getElementById('modal-backdrop');
+                if (modal && backdrop) {
+                    modal.style.display = 'flex';
+                    backdrop.style.display = 'block';
+                }
+                updateRasterDropdown();
+                const rasterSelect = document.getElementById('raster-select');
+                if (rasterSelect && rasterSelect.options.length > 0) {
+                    rasterSelect.selectedIndex = 0;
+                }
+                render3DTerrain();
+            };
+            window.logout = () => { if (confirm("Are you sure you want to log out?")) { localStorage.removeItem('userToken'); localStorage.removeItem('isAuthenticated'); window.location.href = 'login.html'; } };
 
-            const projectListContainer = document.getElementById('projects-modal').querySelector('.modal-content');
+            window.render3DTerrain = () => {
+                const select = document.getElementById('raster-select');
+                const message = document.getElementById('viewer-3d-message');
+                const container = document.getElementById('viewer-3d-canvas');
+                const exaggeration = parseFloat(document.getElementById('exaggeration-range').value || '1');
+                if (!select || !container || !message) return;
+
+                const layerName = select.value;
+                let meta = dataLayerMeta[layerName];
+                let label = layerName;
+                if (!meta || !meta.raster) {
+                    meta = { raster: buildDemoRasterMeta(), type: 'Demo Terrain' };
+                    label = 'Demo Terrain';
+                }
+                message.textContent = `Rendering ${label} (${meta.type})...`;
+
+                const { width, height, data, min, max, samplesPerPixel, noData } = meta.raster;
+                const maxSize = 200;
+                const stepX = Math.max(1, Math.floor(width / maxSize));
+                const stepY = Math.max(1, Math.floor(height / maxSize));
+                const segmentsX = Math.floor(width / stepX);
+                const segmentsY = Math.floor(height / stepY);
+
+                if (!threeDRenderer) {
+                    threeDRenderer = new THREE.WebGLRenderer({ antialias: true });
+                    threeDRenderer.setSize(container.clientWidth, container.clientHeight);
+                    container.innerHTML = '';
+                    container.appendChild(threeDRenderer.domElement);
+                } else {
+                    threeDRenderer.setSize(container.clientWidth, container.clientHeight);
+                    container.innerHTML = '';
+                    container.appendChild(threeDRenderer.domElement);
+                }
+
+                threeDScene = new THREE.Scene();
+                threeDScene.background = new THREE.Color(0x05070d);
+                threeDCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+                threeDCamera.position.set(0, -200, 200);
+
+                threeDControls = new THREE.OrbitControls(threeDCamera, threeDRenderer.domElement);
+                threeDControls.enableDamping = true;
+                threeDControls.dampingFactor = 0.1;
+
+                const geometry = new THREE.PlaneGeometry(segmentsX, segmentsY, segmentsX - 1, segmentsY - 1);
+                geometry.rotateX(-Math.PI / 2);
+
+                const positions = geometry.attributes.position;
+                const colors = [];
+                const range = max - min || 1;
+                for (let y = 0; y < segmentsY; y += 1) {
+                    for (let x = 0; x < segmentsX; x += 1) {
+                        const dataX = x * stepX;
+                        const dataY = y * stepY;
+                        const index = (dataY * width + dataX) * samplesPerPixel;
+                        const heightValue = data[index];
+                        const normalized = heightValue === noData || Number.isNaN(heightValue)
+                            ? 0
+                            : (heightValue - min) / range;
+                        const z = normalized * 50 * exaggeration;
+                        const vertexIndex = y * segmentsX + x;
+                        positions.setY(vertexIndex, z);
+                        const color = new THREE.Color().setHSL(0.65 - normalized * 0.55, 0.7, 0.5);
+                        colors.push(color.r, color.g, color.b);
+                    }
+                }
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshStandardMaterial({
+                    vertexColors: true,
+                    roughness: 0.8,
+                    metalness: 0.1,
+                    side: THREE.DoubleSide
+                });
+                const mesh = new THREE.Mesh(geometry, material);
+                threeDScene.add(mesh);
+
+                const light = new THREE.DirectionalLight(0xffffff, 1);
+                light.position.set(50, -50, 100);
+                threeDScene.add(light);
+                threeDScene.add(new THREE.AmbientLight(0x404040));
+
+                stop3DAnimation();
+                threeDIsAnimating = true;
+                function animate() {
+                    if (!threeDIsAnimating || !threeDRenderer || !threeDScene || !threeDCamera) return;
+                    threeDAnimationId = requestAnimationFrame(animate);
+                    if (threeDControls) {
+                        threeDControls.update();
+                    }
+                    threeDRenderer.render(threeDScene, threeDCamera);
+                }
+                animate();
+                message.textContent = `Rendered ${label}. Use mouse to orbit/zoom.`;
+            };
+
+            const rasterSelect = document.getElementById('raster-select');
+            if (rasterSelect) {
+                rasterSelect.addEventListener('change', () => {
+                    render3DTerrain();
+                });
+            }
+
+            const projectListContainer = document.getElementById('projects-list');
             projects.forEach(p => {
                 const item = document.createElement('div'); item.className = 'list-item'; item.textContent = p.name;
                 item.dataset.projectId = p.id; item.onclick = () => selectProject(p.id);
@@ -502,26 +1109,6 @@
             });    
             updateDataLayerList();
             if (projects.length > 0) { selectProject(projects[0].id); }
-        
-
-    // --- 3D VIEWER REDIRECT ---
-            function open3DViewer() {
-                // This is the path to your point cloud relative to the 'public' folder.
-                // I'm using the example 'lion.laz' file that comes with Potree.
-                // CHANGE THIS to your actual point cloud file.
-                const pointcloudPath = '/Potree_1.8.2/pointclouds/lion_laz/cloud.js'; 
-                const viewerUrl = `/Potree_1.8.2/examples/viewer.html?pointcloud=${encodeURIComponent(pointcloudPath)}`;
-                // Redirect to the viewer page
-                window.location.href = viewerUrl;
-            }
-        
-            function logout() {
-            if (confirm("Are you sure you want to log out?")) {
-            localStorage.removeItem('userToken');
-            localStorage.removeItem('isAuthenticated');
-            window.location.href = 'login.html';    }
-        // If the user clicks "Cancel", nothing happens.
-        }
     </script>
         <script>
             // JavaScript goes here
@@ -529,3 +1116,4 @@
       <script src="/js/leaflet-geotiff.min.js"></script>
     </body>
     </html>
+
